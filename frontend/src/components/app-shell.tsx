@@ -6,6 +6,7 @@ import { useEffect } from "react";
 
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
+import { ThemeToggle } from "@/components/theme-toggle";
 import type { UserRole } from "@/lib/types";
 
 interface NavItem {
@@ -95,6 +96,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </span>
           </div>
           <div className="flex items-center gap-3">
+            <ThemeToggle />
             <div className="text-right">
               <p className="text-sm font-medium">{user.username}</p>
               <p className="text-xs text-muted-foreground capitalize">

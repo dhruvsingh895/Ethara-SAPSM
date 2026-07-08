@@ -34,7 +34,7 @@ export default function NewJoinerPage() {
 
   if (!authorized) {
     return (
-      <p className="rounded-md bg-yellow-50 p-4 text-sm text-yellow-800">
+      <p className="rounded-md bg-yellow-50 p-4 text-sm text-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-200">
         Only HR or Admin can use the new-joiner flow.
       </p>
     );
@@ -109,6 +109,7 @@ export default function NewJoinerPage() {
           </div>
           <div className="flex items-end">
             <button
+              type="button"
               onClick={suggest}
               disabled={busy}
               className="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-60"
@@ -126,6 +127,7 @@ export default function NewJoinerPage() {
             {suggestions.map((s) => (
               <button
                 key={s.id}
+                type="button"
                 onClick={() => setChosen(s)}
                 className={
                   "rounded-md border p-3 text-left text-sm hover:bg-accent " +
@@ -159,6 +161,7 @@ export default function NewJoinerPage() {
               />
             </div>
             <button
+              type="button"
               onClick={allocate}
               disabled={busy || !empId.trim()}
               className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-60"
@@ -170,7 +173,7 @@ export default function NewJoinerPage() {
       )}
 
       {err && (
-        <p className="rounded-md bg-red-50 p-3 text-sm text-red-800">{err}</p>
+        <p className="rounded-md bg-red-50 p-3 text-sm text-red-800 dark:bg-red-950/40 dark:text-red-200">{err}</p>
       )}
 
       {result && (

@@ -30,7 +30,7 @@ export default function ProjectDetailPage() {
 
   if (err)
     return (
-      <p className="rounded-md bg-red-50 p-4 text-sm text-red-800">{err}</p>
+      <p className="rounded-md bg-red-50 p-4 text-sm text-red-800 dark:bg-red-950/40 dark:text-red-200">{err}</p>
     );
   if (!project)
     return <p className="text-sm text-muted-foreground">Loading…</p>;

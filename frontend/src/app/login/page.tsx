@@ -3,6 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 
+import { ThemeToggle } from "@/components/theme-toggle";
 import { ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 
@@ -60,7 +61,10 @@ function LoginForm() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center p-6">
+    <main className="relative flex min-h-screen items-center justify-center p-6">
+      <div className="absolute right-4 top-4">
+        <ThemeToggle />
+      </div>
       <div className="w-full max-w-md space-y-6">
         <div className="text-center">
           <h1 className="text-3xl font-semibold tracking-tight">Ethara SAPSM</h1>
@@ -105,7 +109,7 @@ function LoginForm() {
             />
           </div>
           {error && (
-            <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-800">
+            <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-800 dark:bg-red-950/40 dark:text-red-200">
               {error}
             </p>
           )}

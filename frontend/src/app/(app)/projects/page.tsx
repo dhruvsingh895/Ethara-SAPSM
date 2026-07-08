@@ -70,7 +70,7 @@ export default function ProjectsPage() {
       </Card>
 
       {err && (
-        <p className="rounded-md bg-red-50 p-3 text-sm text-red-800">{err}</p>
+        <p className="rounded-md bg-red-50 p-3 text-sm text-red-800 dark:bg-red-950/40 dark:text-red-200">{err}</p>
       )}
 
       <TableShell>
@@ -114,6 +114,7 @@ export default function ProjectsPage() {
           </p>
           <div className="flex gap-2">
             <button
+              type="button"
               disabled={offset === 0}
               onClick={() => setOffset(Math.max(0, offset - limit))}
               className="rounded-md border px-3 py-1 disabled:opacity-50"
@@ -121,6 +122,7 @@ export default function ProjectsPage() {
               Previous
             </button>
             <button
+              type="button"
               disabled={offset + limit >= data.total}
               onClick={() => setOffset(offset + limit)}
               className="rounded-md border px-3 py-1 disabled:opacity-50"

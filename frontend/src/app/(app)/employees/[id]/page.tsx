@@ -35,7 +35,7 @@ export default function EmployeeDetailPage() {
 
   if (err)
     return (
-      <p className="rounded-md bg-red-50 p-4 text-sm text-red-800">{err}</p>
+      <p className="rounded-md bg-red-50 p-4 text-sm text-red-800 dark:bg-red-950/40 dark:text-red-200">{err}</p>
     );
   if (!emp) return <p className="text-sm text-muted-foreground">Loading…</p>;
 

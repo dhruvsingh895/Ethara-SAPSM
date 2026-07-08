@@ -99,6 +99,7 @@ export default function AiPage() {
           {EXAMPLES.map((ex) => (
             <button
               key={ex}
+              type="button"
               onClick={() => ask(ex)}
               disabled={busy}
               className="rounded-full border bg-background px-3 py-1 text-xs hover:bg-accent disabled:opacity-50"
@@ -148,7 +149,7 @@ function QueryCard({ entry }: { entry: HistoryEntry }) {
       )}
 
       {error && (
-        <p className="mt-3 rounded-md bg-red-50 p-3 text-sm text-red-800">
+        <p className="mt-3 rounded-md bg-red-50 p-3 text-sm text-red-800 dark:bg-red-950/40 dark:text-red-200">
           {error}
         </p>
       )}
@@ -205,7 +206,7 @@ function QueryCard({ entry }: { entry: HistoryEntry }) {
       )}
 
       {response && response.status !== "ok" && response.error && (
-        <p className="mt-3 rounded-md bg-yellow-50 p-3 text-sm text-yellow-800">
+        <p className="mt-3 rounded-md bg-yellow-50 p-3 text-sm text-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-200">
           {response.error}
         </p>
       )}

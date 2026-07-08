@@ -36,6 +36,12 @@
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 224.3 76.3% 48%;
+
+    /* Dark seat map palette — slightly muted for contrast on dark bg */
+    --seat-available: 142 60% 40%;
+    --seat-occupied: 217 80% 55%;
+    --seat-reserved: 45 90% 46%;
+    --seat-blocked: 0 74% 52%;
   }
 
   body {

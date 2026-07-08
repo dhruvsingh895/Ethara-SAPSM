@@ -122,7 +122,7 @@ export default function SeatsPage() {
       </Card>
 
       {err && (
-        <p className="rounded-md bg-red-50 p-3 text-sm text-red-800">{err}</p>
+        <p className="rounded-md bg-red-50 p-3 text-sm text-red-800 dark:bg-red-950/40 dark:text-red-200">{err}</p>
       )}
 
       <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
@@ -147,6 +147,7 @@ export default function SeatsPage() {
                     {byZone[zone].map((seat) => (
                       <button
                         key={seat.id}
+                        type="button"
                         onClick={() => setSelected(seat)}
                         title={`${seat.seat_code} — ${seat.status}`}
                         className={cn(
