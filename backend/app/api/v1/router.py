@@ -9,6 +9,7 @@ from __future__ import annotations
 from fastapi import APIRouter
 
 from app.api.v1.endpoints import (
+    ai,
     allocations,
     auth,
     dashboard,
@@ -28,3 +29,4 @@ api_router.include_router(projects.router)
 api_router.include_router(allocations.router)
 api_router.include_router(new_joiner.router)
 api_router.include_router(dashboard.router)
+api_router.include_router(ai.router)
