@@ -167,7 +167,18 @@ Round-tripped `hash_password` / `verify_password` and `create_access_token` / `d
 
 ## Phase 4 — Seed Data
 
-_Entries will be appended here when the 5k-employee seed generator is built._
+### 14. 5,000-employee realistic seed — 2026-07-08
+**Tool:** Claude
+**Phase:** Phase 4
+**Prompt (summary):** "Write `app/seed.py` that populates the DB with a realistic dataset: 3 buildings x 5 floors x 4 zones (~6k seats), 5000 active + 300 exited employees across 8 weighted departments, 30 projects with long-tail sizes, project assignments summing to <=100%, and ~80% seat occupancy. Idempotent with `--wipe`, deterministic with a fixed Faker seed."
+**Output (summary):** `backend/app/seed.py` with `argparse` (`--wipe`, `--small`), a `_wipe()` that handles FK cycles, and a `seed()` coroutine that builds seats -> employees -> projects -> assignments -> allocations in dependency order. Departments cluster into preferred zones so teammates sit near each other — the new-joiner suggestion algorithm from Phase 3 uses this.
+**Manual fixes:** Two real bugs hit and fixed during Phase 4:
+1. **UniqueViolation on `projects.name`** — my initial name generator picked from 10 prefixes x 8 suffixes = 80 combos, and the pigeonhole principle guaranteed collisions at 30 projects. Fix: appended `f"{i:02d}"` to every project name so uniqueness is guaranteed.
+2. **Utilization values in the thousands of percent** — first run distributed assignments too uniformly (avg 1.2 per active employee); with 5k employees across 23 active projects that's ~265 members per project vs required_seats of 5-200. Tuned two knobs: `n_assign` weights to `[0.1, 0.82, 0.08]` (most people on one project only) and `required_seats` bumped to a realistic 25-500 range. Utilization now lands in a believable spread (0% completed / 40% under / 400%+ over).
+**Validation:** Post-seed verification query on Neon:
+- 6,000 seats, 80/15/3/2% status split — exactly matches target.
+- 5,000 active + 300 exited employees; Engineering 34.5% / Product 10.4% / etc — matches weighted config within noise.
+- Dashboard `/overview` returns correct totals; `/occupancy/by-floor` shows floors ranging 75-90% occupied (natural randomness); `/projects/utilization` shows a healthy mix; `/new-joiner/suggest` for "Engineering" returns seats in Engineering's clustered zone (B3-F3 in the current seed).
 
 ---
 
