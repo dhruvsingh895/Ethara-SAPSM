@@ -378,7 +378,7 @@ Ongoing notes on issues hit and how they were resolved. See [`docs/debugging.md`
 - [x] Database Schema — [`docs/schema.md`](docs/schema.md)
 - [x] Seed Data — [`backend/app/seed.py`](backend/app/seed.py) (5000 employees, 6000 seats, 30 projects live on Neon)
 - [x] API Documentation / Swagger URL — https://ethara-sapsm.onrender.com/docs
-- [ ] Screenshots — [`docs/screenshots/`](docs/screenshots/) *(user to capture)*
+- [x] Screenshots — [`docs/screenshots/`](docs/screenshots/) (8 shots covering login, dashboard, seat map, new-joiner flow, AI assistant, employees, projects)
 - [x] Deployment Notes — [`docs/deployment.md`](docs/deployment.md)
 - [x] Debugging Notes — [`docs/debugging.md`](docs/debugging.md)
 
