@@ -1,0 +1,44 @@
+# ============================================================
+# Ethara SAPSM — Backend requirements
+# Pinned to ranges compatible with Python 3.11+
+# ============================================================
+
+# --- Web framework ---
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+
+# --- Data validation ---
+pydantic==2.10.4
+pydantic-settings==2.7.0
+email-validator==2.2.0
+
+# --- ORM & DB drivers ---
+sqlalchemy[asyncio]==2.0.36
+alembic==1.14.0
+asyncpg==0.30.0
+psycopg2-binary==2.9.10          # sync driver for Alembic
+greenlet==3.1.1
+
+# --- Auth ---
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+python-multipart==0.0.20         # form data for OAuth2 token endpoint
+
+# --- Utility ---
+python-dotenv==1.0.1
+httpx==0.28.1
+tenacity==9.0.0
+
+# --- Seed data ---
+Faker==33.1.0
+
+# --- AI (Gemini) ---
+google-generativeai==0.8.3
+
+# --- SQL guard for NL-to-SQL ---
+sqlparse==0.5.3
+
+# --- Dev / test ---
+pytest==8.3.4
+pytest-asyncio==0.25.0
+ruff==0.8.4
