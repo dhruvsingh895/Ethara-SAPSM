@@ -1,5 +1,7 @@
 # Ethara SAPSM — Seat Allocation & Project Mapping System
 
+![Dashboard](docs/screenshots/02-dashboard-top.png)
+
 A full-stack application to manage seat allocation and project mapping for approximately **5,000 employees**. Enables Employees, HR, Admin, and Project teams to manage seating, project assignments, availability, utilization metrics, and new-joiner allocations — with a natural-language AI query interface on top.
 
 > **Assessment submission** — see [Submission Checklist](#submission-checklist) at the bottom for links to the live deployment, docs, and screenshots.
