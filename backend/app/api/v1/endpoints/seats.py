@@ -164,6 +164,21 @@ async def update_seat(
 
     changes = payload.model_dump(exclude_unset=True)
     old_status = seat.status
+
+    # Refuse status transitions that would leave the current occupant
+    # in a non-occupied seat. Caller must release the allocation first.
+    new_status = changes.get("status")
+    if (
+        new_status is not None
+        and old_status == SeatStatus.OCCUPIED
+        and new_status != SeatStatus.OCCUPIED
+    ):
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Seat is currently occupied. Release the active allocation "
+            "before changing its status.",
+        )
+
     for k, v in changes.items():
         setattr(seat, k, v)
 

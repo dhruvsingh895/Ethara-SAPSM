@@ -1,11 +1,13 @@
 "use client";
 
+import { Pencil, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import { Field, Select } from "@/components/input";
 import { Badge, Card, PageHeader } from "@/components/ui";
-import { apiFetch } from "@/lib/api";
+import { ApiError, apiFetch } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
 import type {
   Allocation,
@@ -205,7 +207,21 @@ export default function SeatsPage() {
 
         <Card>
           <p className="label-cap">Selection</p>
-          {selected ? <SelectionPanel seat={selected} /> : (
+          {selected ? (
+            <SelectionPanel
+              seat={selected}
+              onChanged={(updated) => {
+                setSelected(updated);
+                setData((prev) =>
+                  prev.map((s) => (s.id === updated.id ? updated : s)),
+                );
+              }}
+              onDeleted={() => {
+                setData((prev) => prev.filter((s) => s.id !== selected.id));
+                setSelected(null);
+              }}
+            />
+          ) : (
             <p className="mt-3 text-sm text-muted-foreground">
               Click a seat to inspect it.
             </p>
@@ -216,7 +232,18 @@ export default function SeatsPage() {
   );
 }
 
-function SelectionPanel({ seat }: { seat: Seat }) {
+function SelectionPanel({
+  seat,
+  onChanged,
+  onDeleted,
+}: {
+  seat: Seat;
+  onChanged: (updated: Seat) => void;
+  onDeleted: () => void;
+}) {
+  const { hasRole } = useAuth();
+  const isAdmin = hasRole("admin");
+
   const [occupant, setOccupant] = useState<Employee | null>(null);
   const [allocatedAt, setAllocatedAt] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -307,6 +334,179 @@ function SelectionPanel({ seat }: { seat: Seat }) {
             </p>
           )}
         </div>
+      )}
+
+      {isAdmin && (
+        <AdminSeatControls
+          seat={seat}
+          onChanged={onChanged}
+          onDeleted={onDeleted}
+        />
+      )}
+    </div>
+  );
+}
+
+function AdminSeatControls({
+  seat,
+  onChanged,
+  onDeleted,
+}: {
+  seat: Seat;
+  onChanged: (updated: Seat) => void;
+  onDeleted: () => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [nextStatus, setNextStatus] = useState<SeatStatusValue>(seat.status);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+
+  // Reset local editor state whenever the parent switches to another seat.
+  useEffect(() => {
+    setEditing(false);
+    setNextStatus(seat.status);
+    setErr(null);
+    setConfirmingDelete(false);
+  }, [seat.id, seat.status]);
+
+  const isOccupied = seat.status === "occupied";
+
+  async function saveStatus() {
+    if (nextStatus === seat.status) {
+      setEditing(false);
+      return;
+    }
+    setErr(null);
+    setBusy(true);
+    try {
+      const updated = await apiFetch<Seat>(`/api/v1/seats/${seat.id}`, {
+        method: "PATCH",
+        json: { status: nextStatus },
+      });
+      onChanged(updated);
+      setEditing(false);
+    } catch (e) {
+      setErr(e instanceof ApiError ? e.detail : String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function deleteSeat() {
+    setErr(null);
+    setBusy(true);
+    try {
+      await apiFetch(`/api/v1/seats/${seat.id}`, { method: "DELETE" });
+      onDeleted();
+    } catch (e) {
+      setErr(e instanceof ApiError ? e.detail : String(e));
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="divider pt-3">
+      <p className="label-cap">Admin actions</p>
+
+      {isOccupied && !editing && (
+        <p className="mt-2 rounded-md border border-warning/40 bg-warning/10 px-2 py-1.5 text-[11px] text-warning">
+          Release the active allocation before changing this seat's status.
+        </p>
+      )}
+
+      {!editing && !confirmingDelete && (
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          <button
+            type="button"
+            onClick={() => setEditing(true)}
+            disabled={isOccupied}
+            className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium text-muted-foreground transition hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Pencil className="h-3 w-3" />
+            Change status
+          </button>
+          <button
+            type="button"
+            onClick={() => setConfirmingDelete(true)}
+            disabled={isOccupied}
+            className="inline-flex items-center gap-1 rounded-md border border-danger/40 bg-danger/10 px-2.5 py-1 text-xs font-medium text-danger transition hover:bg-danger/20 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Trash2 className="h-3 w-3" />
+            Delete
+          </button>
+        </div>
+      )}
+
+      {editing && (
+        <div className="mt-2 space-y-2">
+          <Select
+            value={nextStatus}
+            onChange={(e) =>
+              setNextStatus(e.target.value as SeatStatusValue)
+            }
+            aria-label="New status"
+            className="h-8 text-xs"
+          >
+            <option value="available">available</option>
+            <option value="reserved">reserved</option>
+            <option value="blocked">blocked</option>
+          </Select>
+          <div className="flex gap-1.5">
+            <button
+              type="button"
+              onClick={saveStatus}
+              disabled={busy}
+              className="rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground transition hover:opacity-90 disabled:opacity-50"
+            >
+              {busy ? "Saving…" : "Save"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setEditing(false);
+                setErr(null);
+              }}
+              disabled={busy}
+              className="rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium transition hover:bg-accent disabled:opacity-50"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {confirmingDelete && (
+        <div className="mt-2 space-y-2">
+          <p className="rounded-md border border-danger/40 bg-danger/10 px-2 py-1.5 text-[11px] text-danger">
+            Delete <span className="font-mono">{seat.seat_code}</span>? This
+            cannot be undone.
+          </p>
+          <div className="flex gap-1.5">
+            <button
+              type="button"
+              onClick={deleteSeat}
+              disabled={busy}
+              className="rounded-md bg-danger px-2.5 py-1 text-xs font-medium text-white transition hover:opacity-90 disabled:opacity-50"
+            >
+              {busy ? "Deleting…" : "Yes, delete"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirmingDelete(false)}
+              disabled={busy}
+              className="rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium transition hover:bg-accent disabled:opacity-50"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {err && (
+        <p className="mt-2 rounded-md border border-danger/40 bg-danger/10 px-2 py-1.5 text-[11px] text-danger">
+          {err}
+        </p>
       )}
     </div>
   );
