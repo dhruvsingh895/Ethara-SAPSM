@@ -25,9 +25,10 @@ if config.config_file_name is not None:
 settings = get_settings()
 config.set_main_option("sqlalchemy.url", settings.database_url_sync)
 
-# NOTE: import models here so Alembic autogenerate can see them.
-# Example (added in Phase 1):
-#   from app.models import employee, seat, project, allocation, user  # noqa: F401
+# Import the models package so all mappers register on Base.metadata
+# before autogenerate diffs against the live DB.
+import app.models  # noqa: F401, E402
+
 target_metadata = Base.metadata
 
 
