@@ -1,24 +1,31 @@
 "use client";
 
-import { ChevronRight, Search } from "lucide-react";
+import { ChevronRight, Plus, Search, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
+import { ConfirmButton } from "@/components/confirm";
 import { Field, Input, Select } from "@/components/input";
 import { Pagination } from "@/components/pagination";
 import { Badge, Card, PageHeader, TableShell } from "@/components/ui";
-import { apiFetch } from "@/lib/api";
+import { ApiError, apiFetch } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
 import type { Page, Project, ProjectStatus } from "@/lib/types";
 
 const STATUSES: (ProjectStatus | "")[] = ["", "active", "on_hold", "completed"];
 
 export default function ProjectsPage() {
+  const { hasRole } = useAuth();
+  const isAdmin = hasRole("admin");
+
   const [q, setQ] = useState("");
   const [status, setStatus] = useState<ProjectStatus | "">("");
   const [offset, setOffset] = useState(0);
   const limit = 20;
   const [data, setData] = useState<Page<Project> | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [tick, setTick] = useState(0);
+  const [showCreate, setShowCreate] = useState(false);
 
   const query = useMemo(() => {
     const p = new URLSearchParams({
@@ -34,14 +41,46 @@ export default function ProjectsPage() {
     apiFetch<Page<Project>>(`/api/v1/projects?${query}`)
       .then(setData)
       .catch((e) => setErr(e.message));
-  }, [query]);
+  }, [query, tick]);
+
+  async function remove(id: number) {
+    setErr(null);
+    try {
+      await apiFetch(`/api/v1/projects/${id}`, { method: "DELETE" });
+      setTick((t) => t + 1);
+    } catch (e) {
+      setErr(e instanceof ApiError ? e.detail : String(e));
+    }
+  }
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Projects"
         description="Browse all projects and their staffing."
+        actions={
+          isAdmin && !showCreate ? (
+            <button
+              type="button"
+              onClick={() => setShowCreate(true)}
+              className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground shadow-sm transition hover:opacity-90"
+            >
+              <Plus className="h-4 w-4" />
+              New project
+            </button>
+          ) : undefined
+        }
       />
+
+      {showCreate && isAdmin && (
+        <NewProjectForm
+          onCreated={() => {
+            setShowCreate(false);
+            setTick((t) => t + 1);
+          }}
+          onCancel={() => setShowCreate(false)}
+        />
+      )}
 
       <Card>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -116,13 +155,22 @@ export default function ProjectsPage() {
                 {p.required_seats}
               </td>
               <td className="pr-4 py-2.5 text-right">
-                <Link
-                  href={`/projects/${p.id}`}
-                  className="inline-flex items-center gap-0.5 text-xs font-medium text-primary hover:underline"
-                >
-                  View
-                  <ChevronRight className="h-3.5 w-3.5" />
-                </Link>
+                <div className="inline-flex items-center gap-1.5">
+                  <Link
+                    href={`/projects/${p.id}`}
+                    className="inline-flex items-center gap-0.5 text-xs font-medium text-primary hover:underline"
+                  >
+                    View
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </Link>
+                  {isAdmin && (
+                    <ConfirmButton
+                      label=""
+                      icon={<Trash2 className="h-3 w-3" />}
+                      onConfirm={() => remove(p.id)}
+                    />
+                  )}
+                </div>
               </td>
             </tr>
           ))}
@@ -158,5 +206,140 @@ function Th({
     >
       {children}
     </th>
+  );
+}
+
+function NewProjectForm({
+  onCreated,
+  onCancel,
+}: {
+  onCreated: () => void;
+  onCancel: () => void;
+}) {
+  const today = new Date().toISOString().slice(0, 10);
+  const [code, setCode] = useState("");
+  const [name, setName] = useState("");
+  const [client, setClient] = useState("");
+  const [description, setDescription] = useState("");
+  const [startDate, setStartDate] = useState(today);
+  const [requiredSeats, setRequiredSeats] = useState<string>("50");
+  const [err, setErr] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setErr(null);
+    setBusy(true);
+    try {
+      const seats = parseInt(requiredSeats, 10);
+      await apiFetch("/api/v1/projects", {
+        method: "POST",
+        json: {
+          code: code.trim(),
+          name: name.trim(),
+          client: client.trim(),
+          description: description.trim() || null,
+          start_date: startDate,
+          required_seats: Number.isFinite(seats) ? seats : 0,
+        },
+      });
+      onCreated();
+    } catch (e) {
+      setErr(e instanceof ApiError ? e.detail : String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Card>
+      <form onSubmit={submit} className="space-y-4">
+        <p className="text-sm font-medium">New project</p>
+        <div className="grid gap-3 md:grid-cols-2">
+          <Field label="Code" htmlFor="prj-new-code">
+            <Input
+              id="prj-new-code"
+              value={code}
+              onChange={(e) => setCode(e.target.value.toUpperCase())}
+              placeholder="PRJ031"
+              required
+            />
+          </Field>
+          <Field label="Name" htmlFor="prj-new-name">
+            <Input
+              id="prj-new-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Nova Platform 31"
+              required
+            />
+          </Field>
+          <Field label="Client" htmlFor="prj-new-client">
+            <Input
+              id="prj-new-client"
+              value={client}
+              onChange={(e) => setClient(e.target.value)}
+              placeholder="Aurora Bank"
+              required
+            />
+          </Field>
+          <Field label="Required seats" htmlFor="prj-new-seats">
+            <Input
+              id="prj-new-seats"
+              type="number"
+              min={0}
+              value={requiredSeats}
+              onChange={(e) => setRequiredSeats(e.target.value)}
+              required
+            />
+          </Field>
+          <Field label="Start date" htmlFor="prj-new-start">
+            <Input
+              id="prj-new-start"
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              required
+            />
+          </Field>
+          <Field
+            label="Description (optional)"
+            htmlFor="prj-new-desc"
+            className="md:col-span-2"
+          >
+            <Input
+              id="prj-new-desc"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Short blurb"
+            />
+          </Field>
+        </div>
+
+        {err && (
+          <p className="rounded-md border border-danger/40 bg-danger/10 p-2 text-xs text-danger">
+            {err}
+          </p>
+        )}
+
+        <div className="flex justify-end gap-2 pt-1">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={busy}
+            className="rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium transition hover:bg-accent"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={busy}
+            className="rounded-md bg-primary px-4 py-1.5 text-sm font-medium text-primary-foreground shadow-sm transition hover:opacity-90 disabled:opacity-60"
+          >
+            {busy ? "Creating…" : "Create project"}
+          </button>
+        </div>
+      </form>
+    </Card>
   );
 }

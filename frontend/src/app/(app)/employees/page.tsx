@@ -1,14 +1,16 @@
 "use client";
 
-import { ChevronRight, Plus, Search } from "lucide-react";
+import { ChevronRight, Plus, Search, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
+import { ConfirmButton } from "@/components/confirm";
 import { Field, Input, Select } from "@/components/input";
 import { Pagination } from "@/components/pagination";
 import { Badge, Card, PageHeader, TableShell } from "@/components/ui";
-import { apiFetch } from "@/lib/api";
+import { ApiError, apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { useDepartments } from "@/lib/use-departments";
 import type { Employee, EmployeeStatus, Page } from "@/lib/types";
 
 const STATUS_OPTIONS: (EmployeeStatus | "")[] = [
@@ -18,21 +20,10 @@ const STATUS_OPTIONS: (EmployeeStatus | "")[] = [
   "exited",
 ];
 
-const DEPARTMENTS = [
-  "Engineering",
-  "Product",
-  "Design",
-  "QA",
-  "Data",
-  "Sales",
-  "Ops",
-  "HR",
-  "Finance",
-];
-
 export default function EmployeesPage() {
   const { hasRole } = useAuth();
   const canAdd = hasRole("admin", "hr");
+  const canDelete = hasRole("admin", "hr");
 
   const [q, setQ] = useState("");
   const [department, setDepartment] = useState("");
@@ -42,10 +33,22 @@ export default function EmployeesPage() {
   const [status, setStatus] = useState<EmployeeStatus | "">("active");
   const [offset, setOffset] = useState(0);
   const limit = 25;
+  const { departments } = useDepartments();
 
   const [data, setData] = useState<Page<Employee> | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [tick, setTick] = useState(0);
+
+  async function remove(empId: number) {
+    setErr(null);
+    try {
+      await apiFetch(`/api/v1/employees/${empId}`, { method: "DELETE" });
+      setTick((t) => t + 1);
+    } catch (e) {
+      setErr(e instanceof ApiError ? e.detail : String(e));
+    }
+  }
 
   const query = useMemo(() => {
     const p = new URLSearchParams({
@@ -64,7 +67,7 @@ export default function EmployeesPage() {
       .then(setData)
       .catch((e) => setErr(e.message))
       .finally(() => setLoading(false));
-  }, [query]);
+  }, [query, tick]);
 
   return (
     <div className="space-y-6">
@@ -111,9 +114,9 @@ export default function EmployeesPage() {
               }}
             >
               <option value="">Any department</option>
-              {DEPARTMENTS.map((d) => (
-                <option key={d} value={d}>
-                  {d}
+              {departments.map((d) => (
+                <option key={d.id} value={d.name}>
+                  {d.name}
                 </option>
               ))}
             </Select>
@@ -202,13 +205,22 @@ export default function EmployeesPage() {
                 {e.current_seat_id ?? "—"}
               </td>
               <td className="pr-4 py-2.5 text-right">
-                <Link
-                  href={`/employees/${e.id}`}
-                  className="inline-flex items-center gap-0.5 text-xs font-medium text-primary hover:underline"
-                >
-                  View
-                  <ChevronRight className="h-3.5 w-3.5" />
-                </Link>
+                <div className="inline-flex items-center gap-1.5">
+                  <Link
+                    href={`/employees/${e.id}`}
+                    className="inline-flex items-center gap-0.5 text-xs font-medium text-primary hover:underline"
+                  >
+                    View
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </Link>
+                  {canDelete && (
+                    <ConfirmButton
+                      label=""
+                      icon={<Trash2 className="h-3 w-3" />}
+                      onConfirm={() => remove(e.id)}
+                    />
+                  )}
+                </div>
               </td>
             </tr>
           ))}

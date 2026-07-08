@@ -8,6 +8,7 @@ import {
   LogOut,
   Menu,
   MessageSquareCode,
+  Network,
   UserPlus,
   Users,
   X,
@@ -46,6 +47,12 @@ const NAV: NavItem[] = [
     roles: ["admin", "hr"],
   },
   { href: "/ai", label: "AI Assistant", icon: MessageSquareCode },
+  {
+    href: "/departments",
+    label: "Departments",
+    icon: Network,
+    roles: ["admin"],
+  },
 ];
 
 const ROLE_LABEL: Record<UserRole, string> = {

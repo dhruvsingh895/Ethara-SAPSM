@@ -1,19 +1,36 @@
 "use client";
 
-import { ArrowLeft, Building2, Calendar, User } from "lucide-react";
+import { ArrowLeft, Building2, Calendar, Trash2, User } from "lucide-react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { ConfirmButton } from "@/components/confirm";
 import { Badge, Card, TableShell } from "@/components/ui";
-import { apiFetch } from "@/lib/api";
+import { ApiError, apiFetch } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
 import type { Page, Project, ProjectAssignment } from "@/lib/types";
 
 export default function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
+  const { hasRole } = useAuth();
+  const isAdmin = hasRole("admin");
+
   const [project, setProject] = useState<Project | null>(null);
   const [roster, setRoster] = useState<ProjectAssignment[]>([]);
   const [err, setErr] = useState<string | null>(null);
+
+  async function remove() {
+    if (!project) return;
+    setErr(null);
+    try {
+      await apiFetch(`/api/v1/projects/${project.id}`, { method: "DELETE" });
+      router.replace("/projects");
+    } catch (e) {
+      setErr(e instanceof ApiError ? e.detail : String(e));
+    }
+  }
 
   useEffect(() => {
     Promise.all([
@@ -62,6 +79,13 @@ export default function ProjectDetailPage() {
               {project.client}
             </p>
           </div>
+          {isAdmin && (
+            <ConfirmButton
+              label="Delete"
+              icon={<Trash2 className="h-3 w-3" />}
+              onConfirm={remove}
+            />
+          )}
         </div>
 
         <div className="mt-6 grid gap-4 text-sm md:grid-cols-4">

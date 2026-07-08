@@ -8,6 +8,7 @@ import { Field, Input, Select } from "@/components/input";
 import { Badge, Card, PageHeader } from "@/components/ui";
 import { ApiError, apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { useDepartments } from "@/lib/use-departments";
 import { cn } from "@/lib/utils";
 import type {
   Allocation,
@@ -78,6 +79,7 @@ const DEFAULT_DESIGNATIONS: Record<string, string> = {
 export default function NewJoinerPage() {
   const { hasRole } = useAuth();
   const authorized = hasRole("admin", "hr");
+  const { departments } = useDepartments();
 
   const [creating, setCreating] = useState(false);
   const [empId, setEmpId] = useState<string>("");
@@ -260,8 +262,10 @@ export default function NewJoinerPage() {
               value={department}
               onChange={(e) => setDepartment(e.target.value)}
             >
-              {DEPARTMENTS.map((d) => (
-                <option key={d}>{d}</option>
+              {departments.map((d) => (
+                <option key={d.id} value={d.name}>
+                  {d.name}
+                </option>
               ))}
             </Select>
           </Field>
@@ -405,6 +409,7 @@ function NewEmployeeForm({
   const [empCode, setEmpCode] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const { departments } = useDepartments();
 
   useEffect(() => {
     apiFetch<Page<Employee>>("/api/v1/employees?limit=1&offset=0")
@@ -457,8 +462,10 @@ function NewEmployeeForm({
             value={department}
             onChange={(e) => setDepartment(e.target.value)}
           >
-            {DEPARTMENTS.map((d) => (
-              <option key={d}>{d}</option>
+            {departments.map((d) => (
+              <option key={d.id} value={d.name}>
+                {d.name}
+              </option>
             ))}
           </Select>
         </Field>
