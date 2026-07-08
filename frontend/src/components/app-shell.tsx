@@ -61,7 +61,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-screen">
-      <aside className="hidden w-56 shrink-0 border-r bg-muted/30 p-4 md:block">
+      <aside className="hidden w-56 shrink-0 border-r bg-muted/40 p-4 md:block dark:bg-slate-900/60">
         <div className="mb-6">
           <p className="text-lg font-semibold">Ethara SAPSM</p>
           <p className="text-xs text-muted-foreground">v0.1.0</p>

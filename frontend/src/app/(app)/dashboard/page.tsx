@@ -179,10 +179,10 @@ export default function DashboardPage() {
                     className={
                       "text-right font-medium " +
                       (u.utilization_pct > 100
-                        ? "text-red-600"
+                        ? "text-red-600 dark:text-red-400"
                         : u.utilization_pct < 50
-                        ? "text-yellow-600"
-                        : "text-green-700")
+                        ? "text-yellow-600 dark:text-yellow-400"
+                        : "text-green-700 dark:text-green-400")
                     }
                   >
                     {u.utilization_pct.toFixed(1)}%

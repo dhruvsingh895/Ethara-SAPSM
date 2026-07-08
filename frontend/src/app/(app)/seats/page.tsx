@@ -18,10 +18,14 @@ const STATUS_OPTIONS: (SeatStatusValue | "")[] = [
 ];
 
 const SEAT_CLS: Record<SeatStatusValue, string> = {
-  available: "bg-green-200 hover:bg-green-300",
-  occupied: "bg-blue-200 hover:bg-blue-300",
-  reserved: "bg-yellow-200 hover:bg-yellow-300",
-  blocked: "bg-red-200 hover:bg-red-300",
+  available:
+    "bg-green-200 text-green-950 hover:bg-green-300 dark:bg-green-700 dark:text-white dark:hover:bg-green-600",
+  occupied:
+    "bg-blue-200 text-blue-950 hover:bg-blue-300 dark:bg-blue-700 dark:text-white dark:hover:bg-blue-600",
+  reserved:
+    "bg-yellow-200 text-yellow-950 hover:bg-yellow-300 dark:bg-yellow-600 dark:text-white dark:hover:bg-yellow-500",
+  blocked:
+    "bg-red-200 text-red-950 hover:bg-red-300 dark:bg-red-700 dark:text-white dark:hover:bg-red-600",
 };
 
 export default function SeatsPage() {
@@ -70,8 +74,11 @@ export default function SeatsPage() {
       <Card>
         <div className="flex flex-wrap items-end gap-4">
           <div>
-            <label className="text-xs font-medium">Building</label>
+            <label htmlFor="seat-building" className="text-xs font-medium">
+              Building
+            </label>
             <select
+              id="seat-building"
               value={building}
               onChange={(e) => setBuilding(e.target.value)}
               className="ml-2 rounded-md border bg-background px-3 py-2 text-sm"
@@ -84,8 +91,11 @@ export default function SeatsPage() {
             </select>
           </div>
           <div>
-            <label className="text-xs font-medium">Floor</label>
+            <label htmlFor="seat-floor" className="text-xs font-medium">
+              Floor
+            </label>
             <select
+              id="seat-floor"
               value={floor}
               onChange={(e) => setFloor(Number(e.target.value))}
               className="ml-2 rounded-md border bg-background px-3 py-2 text-sm"
@@ -98,8 +108,11 @@ export default function SeatsPage() {
             </select>
           </div>
           <div>
-            <label className="text-xs font-medium">Status</label>
+            <label htmlFor="seat-status" className="text-xs font-medium">
+              Status
+            </label>
             <select
+              id="seat-status"
               value={status}
               onChange={(e) => setStatus(e.target.value as SeatStatusValue | "")}
               className="ml-2 rounded-md border bg-background px-3 py-2 text-sm"
@@ -113,10 +126,10 @@ export default function SeatsPage() {
           </div>
 
           <div className="ml-auto flex gap-3 text-xs">
-            <LegendDot label="available" cls="bg-green-200" />
-            <LegendDot label="occupied" cls="bg-blue-200" />
-            <LegendDot label="reserved" cls="bg-yellow-200" />
-            <LegendDot label="blocked" cls="bg-red-200" />
+            <LegendDot label="available" cls="bg-green-200 dark:bg-green-700" />
+            <LegendDot label="occupied" cls="bg-blue-200 dark:bg-blue-700" />
+            <LegendDot label="reserved" cls="bg-yellow-200 dark:bg-yellow-600" />
+            <LegendDot label="blocked" cls="bg-red-200 dark:bg-red-700" />
           </div>
         </div>
       </Card>
