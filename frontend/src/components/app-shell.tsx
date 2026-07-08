@@ -21,6 +21,7 @@ const NAV: NavItem[] = [
   { href: "/projects", label: "Projects" },
   { href: "/allocations", label: "Allocations", roles: ["admin", "hr"] },
   { href: "/new-joiner", label: "New Joiner", roles: ["admin", "hr"] },
+  { href: "/ai", label: "AI Assistant" },
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -90,6 +91,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </p>
             </div>
             <button
+              type="button"
               onClick={logout}
               className="rounded-md border px-3 py-1.5 text-sm hover:bg-accent"
             >

@@ -127,3 +127,20 @@ export interface Overview {
   active_projects: number;
   top_departments: HeadcountByDept[];
 }
+
+export type AiQueryStatus =
+  | "ok"
+  | "rejected"
+  | "gemini_error"
+  | "exec_error"
+  | "unavailable";
+
+export interface AiQueryResponse {
+  prompt: string;
+  sql: string | null;
+  columns: string[];
+  rows: Array<Array<string | number | boolean | null>>;
+  status: AiQueryStatus;
+  error: string | null;
+  duration_ms: number;
+}
