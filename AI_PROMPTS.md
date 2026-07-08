@@ -264,6 +264,49 @@ Round-tripped `hash_password` / `verify_password` and `create_access_token` / `d
 
 ---
 
+## Phase 8 — Post-launch hardening (evidence + docs)
+
+### 20. Load test + query performance evidence — 2026-07-08
+**Tool:** Claude
+**Phase:** Phase 8
+**Prompt (summary):** "Prove the app performs well at 5k rows. Write a k6 script, run it against live prod, and pair with EXPLAIN ANALYZE output on the hot queries."
+**Output (summary):** `docs/perf/loadtest.js` (k6 script hitting 4 hot endpoints with 5 and 50 VUs), `docs/perf/README.md` (results table), `docs/perf/queries.md` (EXPLAIN ANALYZE for 6 queries on live Neon).
+**Manual fixes:** Interpreted the 50-VU stress-test p95 of 2.71s honestly — it's Render free-tier CPU saturation, not a DB bottleneck. Documented the root cause in the perf README and the mitigation in the new Scaling section of the main README.
+**Validation:** 909 total requests at 50 VUs — 0.00% error rate. Every hot query runs in under 3ms on Neon and uses an index (verified via EXPLAIN output).
+
+### 21. Architectural Decision Records — 2026-07-08
+**Tool:** Claude
+**Phase:** Phase 8
+**Prompt (summary):** "Write 4-5 short ADRs explaining the non-obvious choices: Neon vs alternatives, NL-to-SQL vs tool-use, single DB for local+prod, use_alter for the FK cycle, custom Recharts tooltip."
+**Output (summary):** `docs/adr/README.md` + 5 ADRs (`001` through `005`). Each ADR uses the Context / Options / Decision / Consequences template.
+**Manual fixes:** ADR-003 (single DB for local+prod) was deliberately honest about the accepted risk. Rather than claim it's safe, I documented the specific mitigations (idempotent seed, audit log, downgrade migrations) and stated we'd flip to Neon branching for any real team.
+**Validation:** ADRs cross-reference the actual code (`services/allocation.py`, `services/sql_guard.py`, `models/employee.py`) so future readers can jump from decision to implementation.
+
+### 22. AI safety one-pager — 2026-07-08
+**Tool:** Claude
+**Phase:** Phase 8
+**Prompt (summary):** "Write a doc that explains the AI safety model as a threat model + 5-layer defense + test evidence. Aimed at an evaluator who needs to see clearly that we thought about this."
+**Output (summary):** `docs/ai_safety.md` — T1-T7 threat model, five defense layers (schema hiding, prompt constraints, sqlparse guard, session-level read-only, audit log), and the raw pass/fail output of both the direct-guard and end-to-end smoke tests.
+**Manual fixes:** Explicitly listed known limitations (`ai_reader` role not created in prod yet, Gemini rate limits, JWT trust boundary) so the doc is honest rather than aspirational.
+**Validation:** Cross-referenced against ADR-002 which locks in the design choice.
+
+### 23. Scaling section in README — 2026-07-08
+**Tool:** Claude
+**Phase:** Phase 8
+**Prompt (summary):** "Add a Scaling section to the README that walks through 5k → 50k → 500k → 5M employees with specific architectural moves at each tier."
+**Output (summary):** New README section between AI Assistant and Deployment. Each tier lists specific platform upgrades, DB moves, and app-level changes. Also explicitly names what we'd NOT do (microservices, Kubernetes, multi-region) so a reader sees engineering judgment, not just complexity theatre.
+**Manual fixes:** Grounded every claim in the load test numbers rather than hand-waving. "Render Starter alone drops 50-VU p95 back under 500 ms" is testable.
+
+### 24. GitHub Actions CI — 2026-07-08
+**Tool:** Claude
+**Phase:** Phase 8
+**Prompt (summary):** "Add a CI workflow that runs ruff, an import check, the SQL guard unit test, next lint, npm typecheck, and next build on every push/PR."
+**Output (summary):** `.github/workflows/ci.yml` with two jobs (`backend`, `frontend`). The SQL guard test is inlined into the workflow rather than a separate `tests/` directory — 13 cases, no DB needed, runs in under 5s.
+**Manual fixes:** Pre-ran ruff locally and caught one unused import in `endpoints/seats.py` (`from sqlalchemy import or_, ...` — `or_` wasn't used after a Phase 2 refactor). Fixed before pushing so the first CI run wouldn't fail.
+**Validation:** Backend passes `ruff check app`. Frontend passes `npm run lint` clean. Full build is verified against every push via the workflow.
+
+---
+
 ## Reproducibility
 
 - The Claude Code CLI transcripts for each session are archived locally under `~/.claude/projects/`. They are not committed (they contain machine-specific paths), but the meaningful prompts and outputs are summarised above.

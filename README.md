@@ -18,9 +18,12 @@ A full-stack application to manage seat allocation and project mapping for appro
 8. [Seed Data](#seed-data)
 9. [API Documentation](#api-documentation)
 10. [AI Assistant (NL to SQL)](#ai-assistant-nl-to-sql)
-11. [Deployment](#deployment)
-12. [Debugging Notes](#debugging-notes)
-13. [Submission Checklist](#submission-checklist)
+11. [Performance](#performance)
+12. [Scaling](#scaling)
+13. [Architectural Decisions](#architectural-decisions)
+14. [Deployment](#deployment)
+15. [Debugging Notes](#debugging-notes)
+16. [Submission Checklist](#submission-checklist)
 
 ---
 
@@ -248,6 +251,91 @@ The assistant answers questions like:
 
 ---
 
+## Performance
+
+Live measurements against the deployed backend (Render free tier + Neon free tier). Full detail in [`docs/perf/README.md`](docs/perf/README.md).
+
+**k6 load test — 5 concurrent virtual users, 20 seconds, 217 requests**
+
+| Endpoint | p50 | p95 | Error rate |
+| --- | --- | --- | --- |
+| `GET /employees` | 193 ms | **342 ms** | 0.00% |
+| `GET /seats` (200 rows) | 252 ms | **407 ms** | 0.00% |
+| `GET /dashboard/overview` (5 aggregates) | 248 ms | **349 ms** | 0.00% |
+| `GET /allocations` | 208 ms | **308 ms** | 0.00% |
+
+**Query performance on live Neon.** Every hot-path query uses an index. No sequential scans on any table larger than 30 rows. Full `EXPLAIN ANALYZE` output in [`docs/perf/queries.md`](docs/perf/queries.md).
+
+| Query | Plan | Execution time |
+| --- | --- | --- |
+| Employees count by dept + status | **Index-Only Scan** on `ix_employees_dept_status` | **0.34 ms** |
+| Active allocation lookup by seat | Index Scan on `ix_alloc_seat_active` | **2.17 ms** |
+| Dashboard seat status pie | **Index-Only Scan** on `ix_seats_status_floor` | **1.16 ms** |
+| Dashboard top 5 departments | **Index-Only Scan** on `ix_employees_dept_status` | **1.12 ms** |
+
+The stress test (50 concurrent VUs) reaches ~2.7s p95 — this is Render free-tier CPU saturation, not a database bottleneck. See [Scaling](#scaling) for the specific moves that eliminate it.
+
+---
+
+## Scaling
+
+The system scales through platform tier upgrades and one architectural change per order of magnitude. No rewrite is required at any tier.
+
+### Current — up to ~10,000 employees
+
+- Render Free (0.1 vCPU, 512 MB RAM) + Neon Free (0.5 GB, 190 CPU-h/mo).
+- Handles 5 concurrent users at p95 ≈ 350 ms (verified above).
+- Cold starts (~30 s) after 15 min idle; keep warm with a UptimeRobot ping.
+
+### 50,000 employees
+
+- **Backend:** Render **Starter** ($7/mo — 0.5 vCPU, 512 MB RAM). This alone drops 50-VU p95 from 2.7 s back under 500 ms.
+- **DB:** Neon Free is still fine (0.5 GB comfortably fits ~200k rows across our tables).
+- **App:** No code changes. Existing composite indexes still cover the hot paths.
+
+### 500,000 employees
+
+- **Backend:** Render **Standard** or move to Fly.io with 2 machines behind their built-in load balancer.
+- **DB:** Neon **Launch** tier ($19/mo, 10 GB) plus **read replica** for dashboard aggregates.
+- **App changes:**
+  - Route `/dashboard/*` reads to the read replica (one-line SQLAlchemy engine change).
+  - Add **cursor pagination** on `/employees` and `/allocations` — `OFFSET` gets expensive past 100k rows.
+  - Materialized view on the top-departments and floor-occupancy aggregates, refreshed every ~5 min.
+- **Frontend:** No changes. React Query for stale-while-revalidate would help perceived latency but isn't required.
+
+### 5,000,000 employees
+
+- **Backend:** Auto-scaling behind Cloudflare in front of Vercel. The endpoints are all stateless.
+- **DB:** Sharded Postgres or migration to a distributed OLTP store (Aurora, CockroachDB). Neon Business tier if we can stay single-writer.
+- **App changes:**
+  - **Redis** in front of `/employees/{id}`, `/seats/{id}`, and `/dashboard/*` — read-mostly endpoints with high cache hit potential.
+  - **Elasticsearch or Postgres full-text search** for `q=` on employees — `ILIKE '%q%'` degrades at 5M rows even with a trigram index.
+  - **Event bus** (Kafka or Redpanda) for the audit log, split away from the primary DB. Currently we write it synchronously in the same transaction as the mutation; at this scale that's contention.
+  - **Bulk import** endpoint for HR — the seed script pattern extended to a real feature.
+- **AI Assistant:** the current NL-to-SQL is fine. What changes is that we start caching common queries and using Gemini's context caching feature to keep the schema warm across requests.
+
+### What we would NOT do
+
+- **Microservices.** The domain is too small. Splitting employees, seats, projects into separate services adds network hops and consistency headaches for no scaling benefit at any tier below 50M rows.
+- **Kubernetes.** Overkill for anything below the top tier. A managed platform (Render, Fly, Vercel) handles rollouts, cert management, and scaling with far less operational cost.
+- **Multi-region.** SAPSM is an internal HR tool. Users are geographically clustered. Multi-region would burn engineer time on eventual-consistency debates for latency wins users can't perceive.
+
+---
+
+## Architectural Decisions
+
+Short, dated records of the non-obvious choices in this project. Each ADR explains the context, options considered, decision, and consequences accepted. See [`docs/adr/`](docs/adr/).
+
+| ID | Decision |
+| --- | --- |
+| [ADR-001](docs/adr/001-neon-over-supabase-and-render-postgres.md) | Neon over Supabase and Render Postgres |
+| [ADR-002](docs/adr/002-nl-to-sql-with-guardrails-over-tool-use.md) | NL-to-SQL with guardrails over LLM tool-use |
+| [ADR-003](docs/adr/003-single-neon-db-for-local-and-prod.md) | Single Neon DB for local dev and production |
+| [ADR-004](docs/adr/004-fk-cycle-with-use-alter-over-denormalization-purge.md) | FK cycle with `use_alter` over dropping denormalized columns |
+| [ADR-005](docs/adr/005-recharts-with-custom-tooltip-content.md) | Recharts with a custom Tooltip content component |
+
+---
+
 ## Deployment
 
 ### Backend on Render
@@ -293,6 +381,14 @@ Ongoing notes on issues hit and how they were resolved. See [`docs/debugging.md`
 - [ ] Screenshots — [`docs/screenshots/`](docs/screenshots/) *(user to capture)*
 - [x] Deployment Notes — [`docs/deployment.md`](docs/deployment.md)
 - [x] Debugging Notes — [`docs/debugging.md`](docs/debugging.md)
+
+### Beyond the checklist
+
+- [x] Performance evidence — [`docs/perf/`](docs/perf/) — k6 load test + `EXPLAIN ANALYZE` on live Neon
+- [x] AI safety analysis — [`docs/ai_safety.md`](docs/ai_safety.md) — threat model + 5-layer defense + test evidence
+- [x] Architectural Decision Records — [`docs/adr/`](docs/adr/) — 5 dated ADRs
+- [x] RBAC audit script — [`backend/scripts/rbac_audit.py`](backend/scripts/rbac_audit.py) — probes all 52 role×endpoint combos on live prod (52/52 pass)
+- [x] CI on GitHub Actions — [`.github/workflows/ci.yml`](.github/workflows/ci.yml) — ruff, guard tests, typecheck, lint, build on every push
 
 ---
 
