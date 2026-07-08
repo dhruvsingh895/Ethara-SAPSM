@@ -90,7 +90,28 @@ All entries are ordered chronologically. Each entry follows the schema:
 
 ## Phase 1 — Backend Foundation
 
-_Entries will be appended here as backend models, migrations, and auth are added._
+### 7. Domain models and initial Alembic migration — 2026-07-08
+**Tool:** Claude
+**Phase:** Phase 1
+**Prompt (summary):** "Build SQLAlchemy 2.0 models for User, Employee, Seat, Project, ProjectAssignment, SeatAllocation, AuditLog, AiQueryLog with sensible indexes and relationships. Generate the first Alembic migration and apply it to Neon."
+**Output (summary):** `backend/app/models/` package with 8 model modules, a shared `enums.py`, `mixins.py` for timestamps, and a re-export `__init__.py`. Alembic autogenerate produced revision `382bc0c49159` creating all 8 tables plus their indexes; applied successfully to Neon.
+**Manual fixes:** Alembic autogenerate warned about a mutual FK cycle between `employees.current_project_id` and `projects.pm_id` (unresolvable table sort). Added `use_alter=True` on both FKs so Alembic emits them as separate ALTER TABLE after the initial CREATE, quieting the warning and making CREATE order irrelevant. Also picked composite indexes deliberately (`ix_alloc_seat_active(seat_id, released_at)`, `ix_alloc_emp_active(employee_id, released_at)`) so "find the currently-active allocation" queries hit the index directly.
+**Validation:** After migration, ran `SELECT table_name FROM information_schema.tables WHERE table_schema='public'` on Neon and confirmed all 8 tables plus `alembic_version` exist. Verified mapper wiring by running `sqlalchemy.orm.configure_mappers()` before generating the migration — this catches broken relationships eagerly.
+
+### 8. JWT auth (login, bearer, role guards) — 2026-07-08
+**Tool:** Claude
+**Phase:** Phase 1
+**Prompt (summary):** "Add JWT auth: bcrypt password hashing, `create_access_token` / `decode_token` helpers, `/auth/login` (OAuth2 password form flow so Swagger's Authorize button works), `/auth/me`, and a `require_roles(...)` dependency factory."
+**Output (summary):** `app/core/security.py` (passlib + jose), `app/api/deps.py` (`get_current_user`, `require_admin`, `require_hr_or_admin`, `require_pm_or_admin`), `app/api/v1/endpoints/auth.py` with login (accepts username OR email) and `/me`, `app/schemas/auth.py`, and `app/bootstrap.py` — an idempotent script that creates one user per role for local grading.
+**Manual fixes:** Two bugs hit during smoke test, both fixed in the same commit chain:
+- `passlib==1.7.4` crashes on `bcrypt>=4.1` because it probes `bcrypt.__about__.__version__` which was removed. Pinned `bcrypt==4.0.1` in `requirements.txt`.
+- `pydantic.EmailStr` rejects `.local` per RFC 6761 (special-use TLD), so serializing the seeded `admin@ethara.local` through the login response 500'd. Switched demo emails to `@ethara.dev` and downgraded `UserPublic.email` from `EmailStr` to plain `str` (output schema — DB is the source of truth). Both incidents logged in [`docs/debugging.md`](docs/debugging.md).
+**Validation:** End-to-end smoke test against live Neon:
+- `POST /auth/login` with `admin`/`demo1234` returned a JWT and the user payload.
+- `GET /auth/me` with the token returned the correct user.
+- Wrong password → 401 `Incorrect username or password`.
+- Missing token → 401 `Not authenticated`.
+Round-tripped `hash_password` / `verify_password` and `create_access_token` / `decode_token` in isolation before wiring the endpoint.
 
 ---
 
