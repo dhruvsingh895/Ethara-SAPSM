@@ -1,0 +1,52 @@
+# Render blueprint for the FastAPI backend.
+# Docs: https://render.com/docs/blueprint-spec
+#
+# DATABASE_URL, AI_READER_DATABASE_URL, JWT_SECRET, and GEMINI_API_KEY
+# are set via the Render dashboard (marked sync: false) — never in the repo.
+
+services:
+  - type: web
+    name: ethara-sapsm-backend
+    runtime: python
+    rootDir: backend
+    plan: free
+    region: singapore
+    branch: main
+    buildCommand: |
+      pip install -r requirements.txt && alembic upgrade head
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/v1/health
+    autoDeploy: true
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: PYTHON_VERSION
+        value: "3.11.10"
+      - key: LOG_LEVEL
+        value: INFO
+      - key: API_V1_PREFIX
+        value: /api/v1
+      - key: CORS_ORIGINS
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_URL_SYNC
+        sync: false
+      - key: AI_READER_DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_ALGORITHM
+        value: HS256
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "60"
+      - key: REFRESH_TOKEN_EXPIRE_DAYS
+        value: "7"
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-2.0-flash
+      - key: SEED_SCALE
+        value: full
+      - key: SEED_DEMO_PASSWORD
+        sync: false
