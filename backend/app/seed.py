@@ -235,7 +235,11 @@ async def seed(
                 status=status,
                 start_date=start,
                 end_date=end,
-                required_seats=rng.choice([25, 50, 80, 120, 180, 250, 350, 500]),
+                # Sized so that after ~207 members/project settle in, the
+                # utilization dashboard shows a realistic spread (mostly
+                # 60-120%, a few over-allocated, a few under). See ADR notes
+                # in docs/perf/README.md.
+                required_seats=rng.choice([180, 200, 220, 240, 260, 280, 320]),
             )
         )
     db.add_all(projects)
