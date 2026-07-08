@@ -43,7 +43,7 @@ A full-stack application to manage seat allocation and project mapping for appro
 | Backend       | FastAPI + Pydantic v2 + SQLAlchemy 2.0 + Alembic  | Auto-Swagger, async, typed                   |
 | Database      | PostgreSQL on **Neon** (serverless)               | True Postgres, permanent free tier, branching |
 | Auth          | JWT (access + refresh) with role-based guards     | Stateless, simple                            |
-| AI Assistant  | Google Gemini 2.0 Flash (free tier), NL to SQL    | Free, capable, low-latency                   |
+| AI Assistant  | Google Gemini 2.5 Flash (free tier), NL to SQL    | Free, capable, low-latency                   |
 | Charts        | Recharts                                          | React-native, composable                     |
 | Deployment    | Backend on **Render**, Frontend on **Vercel**     | Zero cost, git-push deploys                  |
 
