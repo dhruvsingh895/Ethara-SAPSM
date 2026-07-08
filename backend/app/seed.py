@@ -322,6 +322,46 @@ async def seed(
     await db.flush()
     log.info("assignments: %d", len(assignments))
 
+    # ---------------- Re-tune required_seats to realistic values ----------------
+    # We now know how many people actually landed on each project. Adjust
+    # required_seats so the dashboard utilization column reads cleanly:
+    #   - The top 2 projects by member count are set to EXACTLY their
+    #     member count -> 100% utilization (a healthy "at capacity" flag)
+    #   - Every other active project gets required_seats above the
+    #     member count so utilization stays under 100%
+    #   - Non-active projects (completed / on_hold) are left as-is
+    from collections import Counter
+
+    active_members: Counter[int] = Counter(a.project_id for a in assignments)
+    active_project_ids = {p.id for p in active_projects}
+
+    # Rank active projects by member count, top 2 go to 100%.
+    ranked = [
+        (pid, active_members.get(pid, 0))
+        for pid in active_project_ids
+    ]
+    ranked.sort(key=lambda t: -t[1])
+    at_capacity = {pid for pid, _ in ranked[:2]}
+
+    for p in projects:
+        if p.id not in active_project_ids:
+            continue
+        n = active_members.get(p.id, 0)
+        if p.id in at_capacity:
+            p.required_seats = max(n, 1)
+        else:
+            # Comfortable buffer: staffing is ~60-95% of required.
+            multiplier = rng.uniform(1.05, 1.5)
+            p.required_seats = max(int(n * multiplier) + 1, 10)
+    await db.flush()
+    log.info(
+        "required_seats retuned; top-2 at 100%%: %s",
+        [
+            next(p.code for p in projects if p.id == pid)
+            for pid in at_capacity
+        ],
+    )
+
     # ---------------- Seat allocations ----------------
     log.info("assigning seats to active employees (target %.0f%% occupancy)", occupancy_pct * 100)
 
