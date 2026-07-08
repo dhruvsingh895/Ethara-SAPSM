@@ -1,11 +1,18 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import { Badge, Card } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import type { Page, Seat, SeatStatusValue } from "@/lib/types";
+import type {
+  Allocation,
+  Employee,
+  Page,
+  Seat,
+  SeatStatusValue,
+} from "@/lib/types";
 
 const BUILDINGS = ["B1", "B2", "B3"];
 const FLOORS = [1, 2, 3, 4, 5];
@@ -187,21 +194,7 @@ export default function SeatsPage() {
 
         <Card>
           <p className="text-sm font-medium">Selection</p>
-          {selected ? (
-            <div className="mt-2 space-y-2 text-sm">
-              <p className="font-mono">{selected.seat_code}</p>
-              <p className="text-xs text-muted-foreground">
-                {selected.building} · Floor {selected.floor} · Zone{" "}
-                {selected.zone}
-              </p>
-              <Badge status={selected.status} />
-              {selected.notes && (
-                <p className="mt-2 text-xs text-muted-foreground">
-                  {selected.notes}
-                </p>
-              )}
-            </div>
-          ) : (
+          {selected ? <SelectionPanel seat={selected} /> : (
             <p className="mt-2 text-sm text-muted-foreground">
               Click a seat to inspect it.
             </p>
@@ -218,5 +211,100 @@ function LegendDot({ label, cls }: { label: string; cls: string }) {
       <span className={cn("h-3 w-3 rounded", cls)} />
       {label}
     </span>
+  );
+}
+
+function SelectionPanel({ seat }: { seat: Seat }) {
+  const [occupant, setOccupant] = useState<Employee | null>(null);
+  const [allocatedAt, setAllocatedAt] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [notFound, setNotFound] = useState(false);
+
+  useEffect(() => {
+    // Reset for the new seat.
+    setOccupant(null);
+    setAllocatedAt(null);
+    setNotFound(false);
+    if (seat.status !== "occupied") return;
+
+    let cancelled = false;
+    setLoading(true);
+
+    (async () => {
+      try {
+        const allocs = await apiFetch<Page<Allocation>>(
+          `/api/v1/allocations?seat_id=${seat.id}&active_only=true&limit=1`,
+        );
+        if (cancelled) return;
+        const active = allocs.items[0];
+        if (!active) {
+          setNotFound(true);
+          return;
+        }
+        setAllocatedAt(active.allocated_at);
+        const emp = await apiFetch<Employee>(
+          `/api/v1/employees/${active.employee_id}`,
+        );
+        if (!cancelled) setOccupant(emp);
+      } catch {
+        if (!cancelled) setNotFound(true);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [seat.id, seat.status]);
+
+  return (
+    <div className="mt-2 space-y-2 text-sm">
+      <p className="font-mono">{seat.seat_code}</p>
+      <p className="text-xs text-muted-foreground">
+        {seat.building} · Floor {seat.floor} · Zone {seat.zone}
+      </p>
+      <Badge status={seat.status} />
+      {seat.notes && (
+        <p className="mt-2 text-xs text-muted-foreground">{seat.notes}</p>
+      )}
+
+      {seat.status === "occupied" && (
+        <div className="mt-3 border-t pt-3">
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">
+            Occupant
+          </p>
+          {loading && (
+            <p className="mt-1 text-xs text-muted-foreground">Looking up…</p>
+          )}
+          {!loading && occupant && (
+            <div className="mt-1 space-y-1">
+              <Link
+                href={`/employees/${occupant.id}`}
+                className="font-medium text-primary hover:underline"
+              >
+                {occupant.first_name} {occupant.last_name}
+              </Link>
+              <p className="font-mono text-xs text-muted-foreground">
+                {occupant.emp_code}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {occupant.designation} · {occupant.department}
+              </p>
+              {allocatedAt && (
+                <p className="text-xs text-muted-foreground">
+                  Sitting here since {new Date(allocatedAt).toLocaleDateString()}
+                </p>
+              )}
+            </div>
+          )}
+          {!loading && !occupant && notFound && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              No active allocation found for this seat.
+            </p>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
