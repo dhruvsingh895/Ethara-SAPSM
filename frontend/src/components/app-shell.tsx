@@ -24,6 +24,17 @@ const NAV: NavItem[] = [
   { href: "/ai", label: "AI Assistant" },
 ];
 
+function pageTitle(pathname: string | null): string {
+  if (!pathname || pathname === "/") return "";
+  const first = pathname.replace(/^\//, "").split("/")[0];
+  const item = NAV.find((n) => n.href === `/${first}`);
+  if (item) return item.label;
+  return first
+    .split("-")
+    .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
+    .join(" ");
+}
+
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { user, loading, logout } = useAuth();
   const router = useRouter();
@@ -79,8 +90,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div className="flex flex-1 flex-col">
         <header className="flex items-center justify-between border-b px-6 py-3">
           <div className="flex items-center gap-4">
-            <span className="text-sm font-medium capitalize">
-              {pathname === "/" ? "" : pathname?.replace(/^\//, "").split("/")[0]}
+            <span className="text-sm font-medium">
+              {pageTitle(pathname)}
             </span>
           </div>
           <div className="flex items-center gap-3">

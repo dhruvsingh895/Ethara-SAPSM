@@ -245,7 +245,22 @@ Round-tripped `hash_password` / `verify_password` and `create_access_token` / `d
 
 ## Phase 7 — Deployment
 
-_Entries will be appended here for Render, Vercel, and Neon deployment steps._
+### 19. Render + Vercel + Neon deployment — 2026-07-08
+**Tool:** Claude (guidance only — dashboard clicks by user)
+**Phase:** Phase 7
+**Prompt (summary):** "Walk me through deploying the FastAPI backend to Render, the Next.js frontend to Vercel, with Postgres on Neon. Set up env vars, verify CORS end-to-end, and confirm the full stack works."
+**Output (summary):**
+- **Backend**: https://ethara-sapsm.onrender.com — deployed via Render's Web Service UI with Root Directory `backend`, native Python runtime, Free plan, Singapore region (matches Neon `ap-southeast-1`). Env vars from `.env` mirrored into the Render dashboard. Health check path `/api/v1/health`.
+- **Frontend**: https://ethara-sapsm.vercel.app — deployed via Vercel's project import with Root Directory `frontend`, Next.js preset auto-detected, `NEXT_PUBLIC_API_URL` pointed at the Render URL.
+- **Database**: existing Neon `neondb` — no migration needed (Render's Alembic step was a no-op since local dev had already applied revision `382bc0c49159`).
+**Manual fixes:** Three real deployment issues hit and fixed in a single session:
+1. **Render defaulted to Python 3.14** (not 3.11 as `render.yaml` specified) because I hadn't imported via the Blueprint flow. On 3.14, `pydantic-core==2.27.2` has no prebuilt wheel and pip fell back to compiling from Rust source via maturin — which fails on Render's read-only Cargo cache. **Fix**: added `backend/runtime.txt` with `python-3.11.10` (picked up automatically by Render's native Python builder). Also collapsed the `render.yaml` `buildCommand` from a `|` block scalar to a single-line string to prevent the dashboard from garbling it when pasted.
+2. **CORS blocked the Vercel origin** initially — the temporary `CORS_ORIGINS=http://localhost:3000` value meant every request from the deployed frontend would fail with a preflight error. **Fix**: updated the Render env var to `https://ethara-sapsm.vercel.app,http://localhost:3000` and redeployed. Verified with a real `OPTIONS` preflight and a `POST /auth/login` from the Vercel origin — response includes `access-control-allow-origin: https://ethara-sapsm.vercel.app`. Localhost stays for continued dev work.
+3. **AI page title showed `Ai`** — the top-bar title used `pathname.split("/")[0]` + CSS `capitalize` which lowercases the middle letters of a two-letter route. **Fix**: added a `pageTitle()` helper in `AppShell` that maps against the `NAV` array so the title matches the sidebar label ("AI Assistant"), and falls back to Title Case for anything else.
+**Validation:**
+- Backend: `GET /`, `/api/v1/health`, `/api/v1/health/db`, `POST /auth/login`, and `/docs` all return 200 from the Render URL. DB round-trip succeeds against Neon.
+- CORS: `OPTIONS` preflight from Vercel origin returns `access-control-allow-origin: https://ethara-sapsm.vercel.app` with all needed methods and headers.
+- Frontend: user walked through every page (Dashboard, Employees, Seats, Projects, Allocations, New Joiner, AI Assistant) in a real browser after CORS lockdown. All pages loaded with real data from the live backend. AI query "How many seats are available on floor 3?" returned `228` in 1283ms. The Gemini free-tier daily quota (20 requests/day for gemini-2.5-flash) tripped during testing — the app surfaced the error as a clean yellow banner without crashing, exactly per the Phase 6 design.
 
 ---
 

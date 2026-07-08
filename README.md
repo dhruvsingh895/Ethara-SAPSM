@@ -26,12 +26,24 @@ A full-stack application to manage seat allocation and project mapping for appro
 
 ## Live URLs
 
-| Service   | URL                                        |
-| --------- | ------------------------------------------ |
-| Frontend  | _to be added after Vercel deployment_      |
-| Backend   | _to be added after Render deployment_      |
-| Swagger   | _`<backend-url>/docs`_                     |
-| Repo      | https://github.com/dhruvsingh895/Ethara-SAPSM |
+| Service   | URL                                                    |
+| --------- | ------------------------------------------------------ |
+| Frontend  | https://ethara-sapsm.vercel.app                        |
+| Backend   | https://ethara-sapsm.onrender.com                      |
+| Swagger   | https://ethara-sapsm.onrender.com/docs                 |
+| OpenAPI   | https://ethara-sapsm.onrender.com/openapi.json         |
+| Repo      | https://github.com/dhruvsingh895/Ethara-SAPSM          |
+
+**Demo accounts** — password `demo1234` for all:
+
+| Username   | Role     |
+| ---------- | -------- |
+| `admin`    | Admin    |
+| `hr`       | HR       |
+| `pm`       | PM       |
+| `employee` | Employee |
+
+> First request after 15 min idle takes ~30s (Render free-tier cold start).
 
 ---
 
@@ -270,17 +282,17 @@ Ongoing notes on issues hit and how they were resolved. See [`docs/debugging.md`
 
 ## Submission Checklist
 
-- [ ] GitHub Repository URL — https://github.com/dhruvsingh895/Ethara-SAPSM
-- [ ] Live Frontend URL
-- [ ] Live Backend URL
-- [ ] README.md — this file
-- [ ] [AI_PROMPTS.md](AI_PROMPTS.md)
-- [ ] Database Schema — [`docs/schema.md`](docs/schema.md)
-- [ ] Seed Data — [`backend/app/seed.py`](backend/app/seed.py)
-- [ ] API Documentation / Swagger URL — `<backend-url>/docs`
-- [ ] Screenshots — [`docs/screenshots/`](docs/screenshots/)
-- [ ] Deployment Notes — [`docs/deployment.md`](docs/deployment.md)
-- [ ] Debugging Notes — [`docs/debugging.md`](docs/debugging.md)
+- [x] GitHub Repository URL — https://github.com/dhruvsingh895/Ethara-SAPSM
+- [x] Live Frontend URL — https://ethara-sapsm.vercel.app
+- [x] Live Backend URL — https://ethara-sapsm.onrender.com
+- [x] README.md — this file
+- [x] [AI_PROMPTS.md](AI_PROMPTS.md)
+- [x] Database Schema — [`docs/schema.md`](docs/schema.md)
+- [x] Seed Data — [`backend/app/seed.py`](backend/app/seed.py) (5000 employees, 6000 seats, 30 projects live on Neon)
+- [x] API Documentation / Swagger URL — https://ethara-sapsm.onrender.com/docs
+- [ ] Screenshots — [`docs/screenshots/`](docs/screenshots/) *(user to capture)*
+- [x] Deployment Notes — [`docs/deployment.md`](docs/deployment.md)
+- [x] Debugging Notes — [`docs/debugging.md`](docs/debugging.md)
 
 ---
 
