@@ -1,8 +1,4 @@
-"""API v1 aggregate router.
-
-Individual resource routers will be attached here as they are built
-in later phases (employees, seats, projects, allocations, AI, etc.).
-"""
+"""API v1 aggregate router."""
 
 from __future__ import annotations
 
@@ -13,6 +9,7 @@ from app.api.v1.endpoints import (
     allocations,
     auth,
     dashboard,
+    departments,
     employees,
     health,
     new_joiner,
@@ -30,3 +27,4 @@ api_router.include_router(allocations.router)
 api_router.include_router(new_joiner.router)
 api_router.include_router(dashboard.router)
 api_router.include_router(ai.router)
+api_router.include_router(departments.router)

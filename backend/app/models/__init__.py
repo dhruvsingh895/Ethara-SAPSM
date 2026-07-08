@@ -6,6 +6,7 @@ Alembic autogenerate needs.
 
 from app.models.ai_query_log import AiQueryLog
 from app.models.audit_log import AuditLog
+from app.models.department import Department
 from app.models.employee import Employee
 from app.models.enums import (
     AuditAction,
@@ -24,6 +25,7 @@ __all__ = [
     "AiQueryLog",
     "AuditAction",
     "AuditLog",
+    "Department",
     "Employee",
     "EmployeeStatus",
     "Project",

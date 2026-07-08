@@ -117,8 +117,10 @@ async def _wipe(db: AsyncSession) -> None:
     await db.execute(delete(Employee))
     await db.execute(delete(Project))
     await db.execute(delete(Seat))
+    from app.models.department import Department
+    await db.execute(delete(Department))
     # Reset PK sequences so codes stay tidy on re-run.
-    for table in ("employees", "projects", "seats", "seat_allocations", "project_assignments"):
+    for table in ("employees", "projects", "seats", "seat_allocations", "project_assignments", "departments"):
         await db.execute(text(f"ALTER SEQUENCE {table}_id_seq RESTART WITH 1"))
     await db.commit()
 
@@ -160,6 +162,27 @@ async def seed(
     db.add_all(seats)
     await db.flush()
     total_seats = len(seats)
+
+    # ---------------- Departments ----------------
+    from app.models.department import Department as _Department
+    _DEPT_DESCRIPTIONS = {
+        "Engineering": "Software, platform, and infrastructure engineering",
+        "Product": "Product management and analytics",
+        "Design": "Product and brand design",
+        "QA": "Quality assurance and test engineering",
+        "Data": "Data engineering, analytics, and ML",
+        "Sales": "Sales and revenue operations",
+        "Ops": "Operations, IT, and facilities",
+        "HR": "People operations and recruiting",
+        "Finance": "Finance and accounting",
+    }
+    dept_rows = [
+        _Department(name=name, description=_DEPT_DESCRIPTIONS.get(name))
+        for name, _ in DEPARTMENTS
+    ]
+    db.add_all(dept_rows)
+    await db.flush()
+    log.info("departments: %d", len(dept_rows))
     log.info("seats: %d", total_seats)
 
     # ---------------- Employees ----------------
