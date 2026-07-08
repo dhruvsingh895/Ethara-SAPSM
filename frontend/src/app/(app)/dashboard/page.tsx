@@ -24,7 +24,6 @@ import {
 
 import { Card, PageHeader, Stat } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
-import { useTheme } from "@/lib/theme-context";
 import type {
   FloorOccupancy,
   Overview,
@@ -38,6 +37,46 @@ const CHART_COLORS = {
   blocked: "hsl(0, 84%, 60%)",
   other: "hsl(240, 5%, 45%)",
 };
+
+/**
+ * Themed tooltip for Recharts. Recharts' contentStyle prop only reaches the
+ * wrapper — the inner label/item row is painted in a hard-coded white block.
+ * Rendering our own content div sidesteps that entirely.
+ */
+function ChartTooltip({
+  active,
+  payload,
+  label,
+}: {
+  active?: boolean;
+  payload?: Array<{ name?: string; value?: number | string; color?: string; dataKey?: string }>;
+  label?: string;
+}) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="rounded-md border border-border bg-card px-3 py-2 text-xs shadow-lg">
+      {label !== undefined && label !== "" && (
+        <p className="mb-1 font-medium text-card-foreground">{label}</p>
+      )}
+      <div className="space-y-0.5">
+        {payload.map((p, i) => (
+          <div key={i} className="flex items-center gap-2">
+            {p.color && (
+              <span
+                className="h-2 w-2 shrink-0 rounded-full"
+                style={{ background: p.color }}
+              />
+            )}
+            <span className="text-muted-foreground">{p.name ?? p.dataKey}</span>
+            <span className="ml-auto font-medium tabular-nums text-card-foreground">
+              {typeof p.value === "number" ? p.value.toLocaleString() : p.value}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export default function DashboardPage() {
   const [overview, setOverview] = useState<Overview | null>(null);
@@ -154,15 +193,7 @@ export default function DashboardPage() {
                     <Cell key={d.name} fill={d.color} />
                   ))}
                 </Pie>
-                <Tooltip
-                  contentStyle={{
-                    background: "hsl(var(--card))",
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: 8,
-                    fontSize: 12,
-                    color: "hsl(var(--card-foreground))",
-                  }}
-                />
+                <Tooltip content={<ChartTooltip />} />
               </PieChart>
             </ResponsiveContainer>
           </div>
@@ -217,13 +248,7 @@ export default function DashboardPage() {
                 />
                 <Tooltip
                   cursor={{ fill: "hsl(var(--accent))" }}
-                  contentStyle={{
-                    background: "hsl(var(--card))",
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: 8,
-                    fontSize: 12,
-                    color: "hsl(var(--card-foreground))",
-                  }}
+                  content={<ChartTooltip />}
                 />
                 <Bar
                   dataKey="active"
@@ -261,16 +286,13 @@ export default function DashboardPage() {
               />
               <Tooltip
                 cursor={{ fill: "hsl(var(--accent))" }}
-                contentStyle={{
-                  background: "hsl(var(--card))",
-                  border: "1px solid hsl(var(--border))",
-                  borderRadius: 8,
-                  fontSize: 12,
-                  color: "hsl(var(--card-foreground))",
-                }}
+                content={<ChartTooltip />}
               />
               <Legend
-                wrapperStyle={{ fontSize: 11 }}
+                wrapperStyle={{
+                  fontSize: 11,
+                  color: "hsl(var(--muted-foreground))",
+                }}
                 iconType="circle"
                 iconSize={8}
               />
