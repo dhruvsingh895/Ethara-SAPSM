@@ -3,6 +3,7 @@
 import { useEffect, useId, useMemo, useState } from "react";
 
 import { Field, Input } from "@/components/input";
+import { Pagination } from "@/components/pagination";
 import { Card, PageHeader, TableShell } from "@/components/ui";
 import { ApiError, apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
@@ -234,29 +235,13 @@ export default function AllocationsPage() {
       </TableShell>
 
       {data && (
-        <div className="flex items-center justify-between text-sm">
-          <p className="text-muted-foreground">
-            {data.total.toLocaleString()} rows · showing {data.items.length}
-          </p>
-          <div className="flex gap-1.5">
-            <button
-              type="button"
-              disabled={offset === 0}
-              onClick={() => setOffset(Math.max(0, offset - limit))}
-              className="rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium transition hover:bg-accent disabled:opacity-40"
-            >
-              Previous
-            </button>
-            <button
-              type="button"
-              disabled={offset + limit >= data.total}
-              onClick={() => setOffset(offset + limit)}
-              className="rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium transition hover:bg-accent disabled:opacity-40"
-            >
-              Next
-            </button>
-          </div>
-        </div>
+        <Pagination
+          offset={offset}
+          limit={limit}
+          total={data.total}
+          label="allocations"
+          onChange={setOffset}
+        />
       )}
     </div>
   );

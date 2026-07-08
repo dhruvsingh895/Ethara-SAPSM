@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import { Field, Input, Select } from "@/components/input";
+import { Pagination } from "@/components/pagination";
 import { Badge, Card, PageHeader, TableShell } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
 import type { Page, Project, ProjectStatus } from "@/lib/types";
@@ -129,29 +130,13 @@ export default function ProjectsPage() {
       </TableShell>
 
       {data && (
-        <div className="flex items-center justify-between text-sm">
-          <p className="text-muted-foreground">
-            {data.total} projects · showing {data.items.length}
-          </p>
-          <div className="flex gap-1.5">
-            <button
-              type="button"
-              disabled={offset === 0}
-              onClick={() => setOffset(Math.max(0, offset - limit))}
-              className="rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium transition hover:bg-accent disabled:opacity-40"
-            >
-              Previous
-            </button>
-            <button
-              type="button"
-              disabled={offset + limit >= data.total}
-              onClick={() => setOffset(offset + limit)}
-              className="rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium transition hover:bg-accent disabled:opacity-40"
-            >
-              Next
-            </button>
-          </div>
-        </div>
+        <Pagination
+          offset={offset}
+          limit={limit}
+          total={data.total}
+          label="projects"
+          onChange={setOffset}
+        />
       )}
     </div>
   );

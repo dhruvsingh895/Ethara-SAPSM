@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import { Field, Input, Select } from "@/components/input";
+import { Pagination } from "@/components/pagination";
 import { Badge, Card, PageHeader, TableShell } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
@@ -35,7 +36,10 @@ export default function EmployeesPage() {
 
   const [q, setQ] = useState("");
   const [department, setDepartment] = useState("");
-  const [status, setStatus] = useState<EmployeeStatus | "">("");
+  // Default to "active" so the top-line count matches the dashboard
+  // (which also filters to active employees). Users can switch to "any"
+  // to see the full population including exited.
+  const [status, setStatus] = useState<EmployeeStatus | "">("active");
   const [offset, setOffset] = useState(0);
   const limit = 25;
 
@@ -61,9 +65,6 @@ export default function EmployeesPage() {
       .catch((e) => setErr(e.message))
       .finally(() => setLoading(false));
   }, [query]);
-
-  const totalPages = data ? Math.max(1, Math.ceil(data.total / limit)) : 1;
-  const currentPage = Math.floor(offset / limit) + 1;
 
   return (
     <div className="space-y-6">
@@ -215,18 +216,13 @@ export default function EmployeesPage() {
       </TableShell>
 
       {data && (
-        <div className="flex items-center justify-between text-sm">
-          <p className="text-muted-foreground">
-            {data.total.toLocaleString()} employees · page {currentPage} of{" "}
-            {totalPages}
-          </p>
-          <Pagination
-            offset={offset}
-            limit={limit}
-            total={data.total}
-            onChange={setOffset}
-          />
-        </div>
+        <Pagination
+          offset={offset}
+          limit={limit}
+          total={data.total}
+          label="employees"
+          onChange={setOffset}
+        />
       )}
     </div>
   );
@@ -251,35 +247,3 @@ function Th({
   );
 }
 
-function Pagination({
-  offset,
-  limit,
-  total,
-  onChange,
-}: {
-  offset: number;
-  limit: number;
-  total: number;
-  onChange: (offset: number) => void;
-}) {
-  return (
-    <div className="flex gap-1.5">
-      <button
-        type="button"
-        disabled={offset === 0}
-        onClick={() => onChange(Math.max(0, offset - limit))}
-        className="rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium transition hover:bg-accent disabled:opacity-40"
-      >
-        Previous
-      </button>
-      <button
-        type="button"
-        disabled={offset + limit >= total}
-        onClick={() => onChange(offset + limit)}
-        className="rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium transition hover:bg-accent disabled:opacity-40"
-      >
-        Next
-      </button>
-    </div>
-  );
-}
