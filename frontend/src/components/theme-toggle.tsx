@@ -16,9 +16,9 @@ export function ThemeToggle() {
       type="button"
       onClick={cycle}
       title={`Theme: ${label} (click to change)`}
-      className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-sm hover:bg-accent"
+      className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
     >
-      <Icon className="h-4 w-4" aria-hidden />
+      <Icon className="h-3.5 w-3.5" aria-hidden />
       <span className="hidden sm:inline">{label}</span>
     </button>
   );

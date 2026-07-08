@@ -10,7 +10,8 @@ export function Card({
   return (
     <div
       className={cn(
-        "rounded-lg border bg-background p-5 shadow-sm dark:bg-slate-900/50",
+        "rounded-xl border border-border bg-card text-card-foreground shadow-soft",
+        "p-5",
         className,
       )}
     >
@@ -19,53 +20,84 @@ export function Card({
   );
 }
 
+/**
+ * A big, prominent stat card for the dashboard.
+ * - Small caps label
+ * - Large tabular number
+ * - Optional hint / delta
+ */
 export function Stat({
   label,
   value,
   hint,
+  icon,
+  trend,
 }: {
   label: string;
   value: React.ReactNode;
   hint?: string;
+  icon?: React.ReactNode;
+  trend?: { direction: "up" | "down" | "flat"; text: string };
 }) {
   return (
-    <Card>
-      <p className="text-xs uppercase tracking-wide text-muted-foreground">
-        {label}
+    <Card className="flex flex-col gap-3">
+      <div className="flex items-center justify-between">
+        <p className="label-cap">{label}</p>
+        {icon && (
+          <span className="text-muted-foreground [&_svg]:h-4 [&_svg]:w-4">
+            {icon}
+          </span>
+        )}
+      </div>
+      <p className="text-3xl font-semibold tracking-tight tabular-nums">
+        {value}
       </p>
-      <p className="mt-1 text-2xl font-semibold">{value}</p>
-      {hint && <p className="mt-1 text-xs text-muted-foreground">{hint}</p>}
+      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        {trend && (
+          <span
+            className={cn(
+              "inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 font-medium",
+              trend.direction === "up" && "bg-success/10 text-success",
+              trend.direction === "down" && "bg-danger/10 text-danger",
+              trend.direction === "flat" && "bg-muted text-muted-foreground",
+            )}
+          >
+            {trend.direction === "up" && "↑ "}
+            {trend.direction === "down" && "↓ "}
+            {trend.text}
+          </span>
+        )}
+        {hint && <span>{hint}</span>}
+      </div>
     </Card>
   );
 }
 
 const STATUS_STYLES: Record<string, string> = {
   available:
-    "bg-green-100 text-green-800 ring-green-300 dark:bg-green-950 dark:text-green-200 dark:ring-green-800",
+    "bg-emerald-500/10 text-emerald-700 ring-emerald-500/20 dark:text-emerald-300",
   occupied:
-    "bg-blue-100 text-blue-800 ring-blue-300 dark:bg-blue-950 dark:text-blue-200 dark:ring-blue-800",
+    "bg-indigo-500/10 text-indigo-700 ring-indigo-500/20 dark:text-indigo-300",
   reserved:
-    "bg-yellow-100 text-yellow-800 ring-yellow-300 dark:bg-yellow-950 dark:text-yellow-200 dark:ring-yellow-800",
+    "bg-amber-500/10 text-amber-700 ring-amber-500/20 dark:text-amber-300",
   blocked:
-    "bg-red-100 text-red-800 ring-red-300 dark:bg-red-950 dark:text-red-200 dark:ring-red-800",
+    "bg-rose-500/10 text-rose-700 ring-rose-500/20 dark:text-rose-300",
   active:
-    "bg-green-100 text-green-800 ring-green-300 dark:bg-green-950 dark:text-green-200 dark:ring-green-800",
+    "bg-emerald-500/10 text-emerald-700 ring-emerald-500/20 dark:text-emerald-300",
   on_leave:
-    "bg-yellow-100 text-yellow-800 ring-yellow-300 dark:bg-yellow-950 dark:text-yellow-200 dark:ring-yellow-800",
+    "bg-amber-500/10 text-amber-700 ring-amber-500/20 dark:text-amber-300",
   exited:
-    "bg-neutral-200 text-neutral-800 ring-neutral-300 dark:bg-neutral-800 dark:text-neutral-200 dark:ring-neutral-600",
+    "bg-neutral-500/10 text-neutral-700 ring-neutral-500/20 dark:text-neutral-300",
   on_hold:
-    "bg-yellow-100 text-yellow-800 ring-yellow-300 dark:bg-yellow-950 dark:text-yellow-200 dark:ring-yellow-800",
+    "bg-amber-500/10 text-amber-700 ring-amber-500/20 dark:text-amber-300",
   completed:
-    "bg-neutral-200 text-neutral-800 ring-neutral-300 dark:bg-neutral-800 dark:text-neutral-200 dark:ring-neutral-600",
+    "bg-neutral-500/10 text-neutral-700 ring-neutral-500/20 dark:text-neutral-300",
   admin:
-    "bg-purple-100 text-purple-800 ring-purple-300 dark:bg-purple-950 dark:text-purple-200 dark:ring-purple-800",
-  hr:
-    "bg-pink-100 text-pink-800 ring-pink-300 dark:bg-pink-950 dark:text-pink-200 dark:ring-pink-800",
-  pm:
-    "bg-blue-100 text-blue-800 ring-blue-300 dark:bg-blue-950 dark:text-blue-200 dark:ring-blue-800",
+    "bg-violet-500/10 text-violet-700 ring-violet-500/20 dark:text-violet-300",
+  hr: "bg-pink-500/10 text-pink-700 ring-pink-500/20 dark:text-pink-300",
+  pm: "bg-indigo-500/10 text-indigo-700 ring-indigo-500/20 dark:text-indigo-300",
   employee:
-    "bg-neutral-100 text-neutral-800 ring-neutral-300 dark:bg-neutral-800 dark:text-neutral-200 dark:ring-neutral-600",
+    "bg-neutral-500/10 text-neutral-700 ring-neutral-500/20 dark:text-neutral-300",
 };
 
 export function Badge({
@@ -77,11 +109,11 @@ export function Badge({
 }) {
   const cls =
     STATUS_STYLES[status] ??
-    "bg-neutral-100 text-neutral-800 ring-neutral-300 dark:bg-neutral-800 dark:text-neutral-200 dark:ring-neutral-600";
+    "bg-neutral-500/10 text-neutral-700 ring-neutral-500/20 dark:text-neutral-300";
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset",
+        "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset",
         cls,
       )}
     >
@@ -92,8 +124,35 @@ export function Badge({
 
 export function TableShell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="overflow-x-auto rounded-lg border">
-      <table className="w-full text-sm">{children}</table>
+    <div className="overflow-hidden rounded-xl border border-border bg-card shadow-soft">
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">{children}</table>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Primary section header used at the top of pages and card groups.
+ */
+export function PageHeader({
+  title,
+  description,
+  actions,
+}: {
+  title: string;
+  description?: string;
+  actions?: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-start justify-between gap-4">
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
+        {description && (
+          <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+        )}
+      </div>
+      {actions && <div className="flex items-center gap-2">{actions}</div>}
     </div>
   );
 }
