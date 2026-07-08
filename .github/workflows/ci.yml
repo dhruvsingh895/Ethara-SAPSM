@@ -89,7 +89,11 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
-        run: npm ci
+        # Using `npm install` (not `npm ci`) because the lockfile is
+        # generated on Windows where some Linux-native optional deps
+        # (e.g. @emnapi/*) can't be resolved. On Ubuntu those deps
+        # install cleanly with `npm install`.
+        run: npm install --no-audit --no-fund
 
       - name: Type check
         run: npm run typecheck
