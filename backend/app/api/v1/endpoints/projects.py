@@ -30,7 +30,10 @@ router = APIRouter(prefix="/projects", tags=["projects"])
 @router.get("", response_model=Page[ProjectOut], summary="List projects")
 async def list_projects(
     page: PageParams = Depends(),
-    q: Optional[str] = Query(None, description="Search by name/code/client"),
+    q: Optional[str] = Query(
+        None,
+        description="Substring search across name, code, client, description",
+    ),
     status_: Optional[ProjectStatus] = Query(None, alias="status"),
     pm_id: Optional[int] = Query(None),
     db: AsyncSession = Depends(get_db),
@@ -43,7 +46,12 @@ async def list_projects(
     if q:
         like = f"%{q.strip()}%"
         filters.append(
-            or_(Project.name.ilike(like), Project.code.ilike(like), Project.client.ilike(like))
+            or_(
+                Project.name.ilike(like),
+                Project.code.ilike(like),
+                Project.client.ilike(like),
+                Project.description.ilike(like),
+            )
         )
     if status_:
         filters.append(Project.status == status_)

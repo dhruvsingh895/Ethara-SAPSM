@@ -17,6 +17,18 @@ const STATUS_OPTIONS: (EmployeeStatus | "")[] = [
   "exited",
 ];
 
+const DEPARTMENTS = [
+  "Engineering",
+  "Product",
+  "Design",
+  "QA",
+  "Data",
+  "Sales",
+  "Ops",
+  "HR",
+  "Finance",
+];
+
 export default function EmployeesPage() {
   const { hasRole } = useAuth();
   const canAdd = hasRole("admin", "hr");
@@ -83,21 +95,27 @@ export default function EmployeesPage() {
                   setQ(e.target.value);
                   setOffset(0);
                 }}
-                placeholder="name, email, or employee code…"
+                placeholder="name, email, code, designation, or department…"
                 className="pl-8"
               />
             </div>
           </Field>
           <Field label="Department" htmlFor="emp-dept">
-            <Input
+            <Select
               id="emp-dept"
               value={department}
               onChange={(e) => {
                 setDepartment(e.target.value);
                 setOffset(0);
               }}
-              placeholder="Engineering"
-            />
+            >
+              <option value="">Any department</option>
+              {DEPARTMENTS.map((d) => (
+                <option key={d} value={d}>
+                  {d}
+                </option>
+              ))}
+            </Select>
           </Field>
           <Field label="Status" htmlFor="emp-status">
             <Select

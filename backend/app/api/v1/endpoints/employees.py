@@ -23,8 +23,13 @@ router = APIRouter(prefix="/employees", tags=["employees"])
 @router.get("", response_model=Page[EmployeeOut], summary="List employees")
 async def list_employees(
     page: PageParams = Depends(),
-    q: Optional[str] = Query(None, description="Search across name, emp_code, email"),
-    department: Optional[str] = Query(None),
+    q: Optional[str] = Query(
+        None,
+        description="Substring search across first_name, last_name, email, emp_code, designation, department",
+    ),
+    department: Optional[str] = Query(
+        None, description="Substring match against department (case-insensitive)"
+    ),
     status_: Optional[EmployeeStatus] = Query(None, alias="status"),
     project_id: Optional[int] = Query(None),
     seat_id: Optional[int] = Query(None),
@@ -43,10 +48,13 @@ async def list_employees(
                 Employee.last_name.ilike(like),
                 Employee.email.ilike(like),
                 Employee.emp_code.ilike(like),
+                Employee.designation.ilike(like),
+                Employee.department.ilike(like),
             )
         )
     if department:
-        filters.append(Employee.department == department)
+        # Substring, case-insensitive: 'eng' matches 'Engineering'.
+        filters.append(Employee.department.ilike(f"%{department.strip()}%"))
     if status_:
         filters.append(Employee.status == status_)
     if project_id is not None:
