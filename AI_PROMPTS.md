@@ -184,7 +184,28 @@ Round-tripped `hash_password` / `verify_password` and `create_access_token` / `d
 
 ## Phase 5 — Frontend
 
-_Entries will be appended here as Next.js pages and components are built._
+### 15. Auth-aware Next.js UI (dashboard, employees, seats, projects, allocations) — 2026-07-08
+**Tool:** Claude
+**Phase:** Phase 5
+**Prompt (summary):** "Build the Next.js frontend: typed API client, JWT auth context, login page, protected route group with role-aware sidebar, dashboard with Recharts, employees list+detail, seats grid, projects+roster, new-joiner allocation flow, allocations list with release."
+**Output (summary):**
+- `src/lib/api.ts` — `apiFetch<T>()` wrapper handling JSON/form bodies, bearer tokens, 401 auto-clear, and typed errors via `ApiError`.
+- `src/lib/types.ts` — full mirror of backend Pydantic schemas.
+- `src/lib/auth-context.tsx` — `useAuth()` provider (login, logout, hasRole).
+- `src/app/login/page.tsx` — login form with 4 demo-account chips.
+- `src/app/(app)/layout.tsx` + `AppShell` — route group with sidebar (role-filtered nav) + top bar + logout.
+- `src/app/(app)/dashboard/page.tsx` — 4 stat cards, seat-status pie, top-departments bar, floor-occupancy stacked bar, top project utilization table with over/under colour coding.
+- `src/app/(app)/employees/{page,[id]/page}.tsx` — filterable list with search + department + status, paginated; detail shows profile, current seat, current project.
+- `src/app/(app)/seats/page.tsx` — building/floor/status filters, colour-coded seat grid by zone, click-to-inspect side panel.
+- `src/app/(app)/projects/{page,[id]/page}.tsx` — filterable list; detail shows profile + active roster.
+- `src/app/(app)/new-joiner/page.tsx` — 3-step wizard (suggest → pick → allocate) gated to HR/Admin.
+- `src/app/(app)/allocations/page.tsx` — filterable list with inline release (HR/Admin).
+- `src/components/ui.tsx` — hand-rolled `Card`, `Stat`, `Badge`, `TableShell` atoms; no shadcn install churn.
+**Manual fixes:** Three real issues hit and fixed during Phase 5:
+1. **npm audit surfaced a critical Next.js advisory** on the initially-pinned `14.2.15`. Bumped both `next` and `eslint-config-next` to `14.2.35` (latest 14.x patch) — clears the critical, keeps App Router compatibility. Deliberately did **not** jump to 15+ because of the fetch-cache and dynamic-API breaking changes.
+2. **Prerender error on `/login`** — `useSearchParams()` in Next 14 App Router requires a Suspense boundary during static export. Wrapped the form in a `<Suspense>` boundary with a "Loading…" fallback and split the component into `LoginPage` shell + `LoginForm` child.
+3. **A11y diagnostic on inputs missing labels** — even with visual `<label>` wraps, IDE flagged the inputs; fixed by adding explicit `id`/`htmlFor` associations, `name`, and `placeholder`. Adds nothing at runtime but silences the linter and improves screen-reader behaviour.
+**Validation:** `npm run typecheck` clean (0 errors). Full `npm run build` succeeds with 11 routes prerendered (8 static, 2 dynamic). Every page returns HTTP 200 from the production server. Bundle sizes reasonable — dashboard 106KB (Recharts), everything else under 4KB per route (client bundle) + 87KB shared. **Not** driven end-to-end in a real browser by AI tooling — user is expected to click through once before deployment to verify visual layout and chart rendering with the live 5k dataset.
 
 ---
 
