@@ -333,6 +333,7 @@ Short, dated records of the non-obvious choices in this project. Each ADR explai
 | [ADR-003](docs/adr/003-single-neon-db-for-local-and-prod.md) | Single Neon DB for local dev and production |
 | [ADR-004](docs/adr/004-fk-cycle-with-use-alter-over-denormalization-purge.md) | FK cycle with `use_alter` over dropping denormalized columns |
 | [ADR-005](docs/adr/005-recharts-with-custom-tooltip-content.md) | Recharts with a custom Tooltip content component |
+| [ADR-006](docs/adr/006-gemini-flash-over-huggingface.md) | Gemini 2.5 Flash over a self-hosted HuggingFace model |
 
 ---
 

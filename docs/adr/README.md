@@ -18,3 +18,4 @@ Each ADR follows a compact template:
 | [ADR-003](003-single-neon-db-for-local-and-prod.md) | Single Neon DB for local dev and production | Accepted |
 | [ADR-004](004-fk-cycle-with-use-alter-over-denormalization-purge.md) | FK cycle with `use_alter` over dropping the denormalized columns | Accepted |
 | [ADR-005](005-recharts-with-custom-tooltip-content.md) | Recharts with a custom Tooltip content component | Accepted |
+| [ADR-006](006-gemini-flash-over-huggingface.md) | Gemini 2.5 Flash over a self-hosted HuggingFace model | Accepted |
