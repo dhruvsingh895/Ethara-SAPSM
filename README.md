@@ -213,7 +213,7 @@ Key routes:
 | POST   | `/allocations/{id}/release`         | Release a seat                       |
 | POST   | `/new-joiner/suggest`               | Suggest a seat for a joiner          |
 | GET    | `/dashboard/occupancy`              | Occupancy metrics                    |
-| POST   | `/ai/query`                         | Natural-language query               |
+| POST   | `/api/v1/ai/query`                  | Natural-language query               |
 
 ---
 

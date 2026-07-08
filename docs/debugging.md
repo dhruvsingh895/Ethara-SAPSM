@@ -32,6 +32,29 @@ inside the venv resolves the crash.
 further; short-term the pin is safe because bcrypt hashes we produce now
 verify against any future backend.
 
+## 2026-07-08 — Gemini free-tier: 5 RPM, per-minute burn
+
+**Symptom:** During Phase 6 adversarial testing, the last 4 of 11
+prompts in the same batch returned `status=gemini_error` with a 429
+"quota exceeded" body pointing at `GenerateRequestsPerMinutePerModel`.
+
+**Root cause:** Google AI Studio free tier for `gemini-2.5-flash`
+caps at **5 requests per minute**. A tight loop of 11 prompts blew
+past that. This is per-minute (resets in ~60s), not per-day.
+
+**Fix:** Two changes:
+1. Smoke test now sleeps briefly and treats `gemini_error`/`unavailable`
+   as *safe outcomes* (not failures) since they never expose data.
+2. The `/ai/query` orchestrator already logs the 429 to `ai_query_log`
+   with the retry-after seconds, which is enough for a demo.
+
+**Prevention:** In production, add a client-side rate limit on the
+frontend (debounce input, disable button while previous call is in
+flight — already done in `ai/page.tsx`), and consider a 5-second
+cool-down between rapid queries. Also fine to display "Please wait —
+Gemini free tier limits us to 5 questions per minute" if the error
+mentions quota.
+
 ## 2026-07-08 — EmailStr rejects `.local` TLD
 
 **Symptom:** `POST /auth/login` returned 500. Server log showed

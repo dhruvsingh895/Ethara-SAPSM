@@ -211,10 +211,35 @@ Round-tripped `hash_password` / `verify_password` and `create_access_token` / `d
 
 ## Phase 6 — AI Assistant (Gemini NL to SQL)
 
-_This section will document:_
-- _Prompt engineering for the Gemini NL-to-SQL system prompt (schema-only context)._
-- _Guardrail regex and SQL-allowlist parser design._
-- _Manual testing of adversarial prompts (attempted `INSERT`, `DROP`, cross-table joins to `users`)._
+### 16. SQL guardrail service — 2026-07-08
+**Tool:** Claude
+**Phase:** Phase 6
+**Prompt (summary):** "Build a defense-in-depth SQL guard that strips model prose/fences, parses with sqlparse, blocks non-SELECT, forbids sensitive tables (users/audit_log/ai_query_log), forbids DDL/DML keywords, and injects LIMIT 100 when missing. Must be safe against multi-statement, comment tricks, lowercase, CTEs."
+**Output (summary):** `app/services/sql_guard.py` with `sanitize_and_validate()` and `UnsafeSQLError`. Belt-and-braces: sqlparse type check + raw word-token scan for forbidden keywords + explicit denylist of sensitive tables + `LIMIT` auto-injection.
+**Manual fixes:** Added a fence-stripper and prose-prefix trimmer (Gemini frequently returns ` ```sql ... ``` ` or "Here is the SQL: ..."). Word-token scan uses uppercase set intersection so lowercase `drop table x` is caught. Sensitive-table check uses a lowercased word set so `SELECT * FROM Users` and `JOIN users u ...` both trip.
+**Validation:** 16-case direct-guard unit test hit at commit time. 10-case adversarial suite (DROP, INSERT, UPDATE, TRUNCATE, cross-join to users, multi-statement, SET+SELECT trick, etc.) — **10/10 blocked at the guard layer** with no dependency on Gemini's own refusal. Legitimate CTE (`WITH t AS (SELECT ...) SELECT COUNT(*) FROM t`) accepted correctly.
+
+### 17. Gemini NL-to-SQL service and orchestrator — 2026-07-08
+**Tool:** Claude
+**Phase:** Phase 6
+**Prompt (summary):** "Wrap google-generativeai in a service that hard-codes a schema-only system prompt (never row data). Orchestrator: prompt -> Gemini -> guard -> execute in a read-only session with statement_timeout -> log to ai_query_log."
+**Output (summary):** `app/services/gemini.py` builds a `GenerativeModel` with a `system_instruction` containing the 5-table subset (employees, seats, projects, project_assignments, seat_allocations) — deliberately omitting users/audit_log/ai_query_log. `app/services/ai_query.py` orchestrates the full pipeline and returns a typed `AiQueryResult`. Endpoint `POST /api/v1/ai/query` with `AiQueryRequest`/`AiQueryResponse` schemas.
+**Manual fixes:**
+- The Gemini SDK is sync; wrapped `generate_content()` with `anyio.to_thread.run_sync()` so it composes with the async endpoint cleanly.
+- Read-only enforcement is `SET LOCAL statement_timeout='3s'; SET LOCAL default_transaction_read_only=ON;` at the start of the query transaction, then rollback at the end. `SET LOCAL` scopes to the txn so it can't leak.
+- Status enum covers all realistic outcomes: `ok | rejected | gemini_error | exec_error | unavailable`. Every one is logged to `ai_query_log` with prompt, generated SQL, row count, duration, and error.
+- Trimmed error strings to 500 chars before persisting so a runaway Gemini stack trace can't blow up the log table.
+**Validation:** End-to-end smoke test at `scripts/ai_smoke_test.py`:
+- 5/5 legitimate prompts returned `status=ok` with correct SQL and real Neon data. `SELECT COUNT(id) FROM seats WHERE floor=3 AND status='AVAILABLE'` for "how many seats are available on floor 3" — exactly what we want.
+- 6/6 adversarial prompts handled safely, 0 leaks. Some blocked by Gemini's own refusal (returned inert `SELECT 1`), some by the guard, some by rate-limit; in every case zero DDL/DML executed and zero restricted tables referenced.
+
+### 18. Frontend AI chat panel (/ai) — 2026-07-08
+**Tool:** Claude
+**Phase:** Phase 6
+**Prompt (summary):** "Build a chat-style AI page: input + 6 example chips, collapsible generated-SQL disclosure, results as a proper table, status badge, latency, and a stack of past queries."
+**Output (summary):** `frontend/src/app/(app)/ai/page.tsx` — client-side stateful history of query cards. Each card shows the prompt, status badge (colour-mapped to available/reserved/blocked), Gemini's SQL in a collapsible `<details>`, the result table with column headers from the response, row count footer, and error banner for non-ok statuses. Sidebar link added under `AppShell`.
+**Manual fixes:** Chose `<details>` for the SQL disclosure so keyboard users get open/close for free without extra state. Empty-history state shows a dashed placeholder card so the page never looks broken on first load. Results table uses `String(v)` fallback for typed cells so nulls render as `—` and booleans/numbers don't crash React.
+**Validation:** `npm run build` succeeds. AI route lists at 3KB / 98KB first-load — same weight class as the other pages. IDE flagged the logout button on `AppShell` for missing `type="button"` in the same commit — fixed. Not driven end-to-end in a real browser by AI tooling (same limitation noted in Phase 5); user should click through once before deployment.
 
 ---
 

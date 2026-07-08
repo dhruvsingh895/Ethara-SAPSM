@@ -46,6 +46,7 @@ Before pushing to production, all secrets used during local development
 - [ ] **SEED_DEMO_PASSWORD** — change from `demo1234` before public exposure, or disable seeded demo accounts entirely.
 - [ ] Confirm no `.env` file is present in the Docker image (check `.dockerignore`).
 - [ ] Confirm `CORS_ORIGINS` in Render lists only the Vercel domain, not `*`.
+- [ ] **Create the `ai_reader` role in Neon** per [`neon_setup.md`](neon_setup.md) and point `AI_READER_DATABASE_URL` at it. During local dev this points at the same DB owner, which is fine because the app-level SQL guard already blocks writes; in production the DB-level SELECT-only role is an important second layer of defense.
 
 ## Keeping free-tier services warm
 
