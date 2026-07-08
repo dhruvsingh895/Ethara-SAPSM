@@ -7,12 +7,14 @@ import {
   Mail,
   Pencil,
   Phone,
+  Trash2,
   User,
 } from "lucide-react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { ConfirmButton } from "@/components/confirm";
 import { Select } from "@/components/input";
 import { Badge, Card } from "@/components/ui";
 import { ApiError, apiFetch } from "@/lib/api";
@@ -23,6 +25,7 @@ const STATUS_OPTIONS: EmployeeStatus[] = ["active", "on_leave", "exited"];
 
 export default function EmployeeDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
   const { hasRole } = useAuth();
   const canEdit = hasRole("admin", "hr");
 
@@ -30,6 +33,17 @@ export default function EmployeeDetailPage() {
   const [seat, setSeat] = useState<Seat | null>(null);
   const [project, setProject] = useState<Project | null>(null);
   const [err, setErr] = useState<string | null>(null);
+
+  async function remove() {
+    if (!emp) return;
+    setErr(null);
+    try {
+      await apiFetch(`/api/v1/employees/${emp.id}`, { method: "DELETE" });
+      router.replace("/employees");
+    } catch (e) {
+      setErr(e instanceof ApiError ? e.detail : String(e));
+    }
+  }
 
   useEffect(() => {
     apiFetch<Employee>(`/api/v1/employees/${id}`)
@@ -93,7 +107,19 @@ export default function EmployeeDetailPage() {
               {emp.designation} · {emp.department}
             </p>
           </div>
+          {canEdit && (
+            <ConfirmButton
+              label="Delete"
+              icon={<Trash2 className="h-3 w-3" />}
+              onConfirm={remove}
+            />
+          )}
         </div>
+        {err && (
+          <p className="mt-3 rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
+            {err}
+          </p>
+        )}
 
         <div className="mt-6 grid gap-4 text-sm md:grid-cols-2">
           <InfoRow icon={Mail} label="Email" value={emp.email} />

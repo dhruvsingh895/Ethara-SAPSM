@@ -1,14 +1,13 @@
 "use client";
 
-import { ChevronRight, Plus, Search, Trash2 } from "lucide-react";
+import { ChevronRight, Plus, Search } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
-import { ConfirmButton } from "@/components/confirm";
 import { Field, Input, Select } from "@/components/input";
 import { Pagination } from "@/components/pagination";
 import { Badge, Card, PageHeader, TableShell } from "@/components/ui";
-import { ApiError, apiFetch } from "@/lib/api";
+import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { useDepartments } from "@/lib/use-departments";
 import type { Employee, EmployeeStatus, Page } from "@/lib/types";
@@ -23,7 +22,6 @@ const STATUS_OPTIONS: (EmployeeStatus | "")[] = [
 export default function EmployeesPage() {
   const { hasRole } = useAuth();
   const canAdd = hasRole("admin", "hr");
-  const canDelete = hasRole("admin", "hr");
 
   const [q, setQ] = useState("");
   const [department, setDepartment] = useState("");
@@ -38,17 +36,6 @@ export default function EmployeesPage() {
   const [data, setData] = useState<Page<Employee> | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [tick, setTick] = useState(0);
-
-  async function remove(empId: number) {
-    setErr(null);
-    try {
-      await apiFetch(`/api/v1/employees/${empId}`, { method: "DELETE" });
-      setTick((t) => t + 1);
-    } catch (e) {
-      setErr(e instanceof ApiError ? e.detail : String(e));
-    }
-  }
 
   const query = useMemo(() => {
     const p = new URLSearchParams({
@@ -67,7 +54,7 @@ export default function EmployeesPage() {
       .then(setData)
       .catch((e) => setErr(e.message))
       .finally(() => setLoading(false));
-  }, [query, tick]);
+  }, [query]);
 
   return (
     <div className="space-y-6">
@@ -205,22 +192,13 @@ export default function EmployeesPage() {
                 {e.current_seat_id ?? "—"}
               </td>
               <td className="pr-4 py-2.5 text-right">
-                <div className="inline-flex items-center gap-1.5">
-                  <Link
-                    href={`/employees/${e.id}`}
-                    className="inline-flex items-center gap-0.5 text-xs font-medium text-primary hover:underline"
-                  >
-                    View
-                    <ChevronRight className="h-3.5 w-3.5" />
-                  </Link>
-                  {canDelete && (
-                    <ConfirmButton
-                      label=""
-                      icon={<Trash2 className="h-3 w-3" />}
-                      onConfirm={() => remove(e.id)}
-                    />
-                  )}
-                </div>
+                <Link
+                  href={`/employees/${e.id}`}
+                  className="inline-flex items-center gap-0.5 text-xs font-medium text-primary hover:underline"
+                >
+                  View
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </Link>
               </td>
             </tr>
           ))}
