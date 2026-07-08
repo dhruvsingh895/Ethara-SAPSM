@@ -15,6 +15,7 @@ from app.api.v1.endpoints import (
     new_joiner,
     projects,
     seats,
+    users,
 )
 
 api_router = APIRouter()
@@ -28,3 +29,4 @@ api_router.include_router(new_joiner.router)
 api_router.include_router(dashboard.router)
 api_router.include_router(ai.router)
 api_router.include_router(departments.router)
+api_router.include_router(users.router)

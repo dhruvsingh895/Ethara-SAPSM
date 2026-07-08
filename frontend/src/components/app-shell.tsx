@@ -4,6 +4,7 @@ import {
   ArrowLeftRight,
   Building2,
   FolderKanban,
+  KeyRound,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -52,6 +53,12 @@ const NAV: NavItem[] = [
     href: "/departments",
     label: "Departments",
     icon: Network,
+    roles: ["admin"],
+  },
+  {
+    href: "/users",
+    label: "Users",
+    icon: KeyRound,
     roles: ["admin"],
   },
 ];
