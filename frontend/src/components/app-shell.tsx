@@ -17,6 +17,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { AiChatWidget } from "@/components/ai-chat-widget";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useAuth } from "@/lib/auth-context";
 import type { UserRole } from "@/lib/types";
@@ -244,6 +245,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="mx-auto max-w-7xl space-y-6">{children}</div>
         </main>
       </div>
+
+      {/* Floating chat widget, self-hides on /login and /ai */}
+      <AiChatWidget />
     </div>
   );
 }
