@@ -1,0 +1,103 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend:
+    name: Backend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11.10"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Lint (ruff)
+        run: ruff check app
+
+      - name: Import check
+        # Confirms every module imports cleanly with no runtime errors
+        # (catches missing imports, name errors, circular imports).
+        run: python -c "from app.main import app; print(f'{sum(1 for r in app.routes if hasattr(r, \"path\") and r.path.startswith(\"/api\"))} routes registered')"
+
+      - name: SQL guard unit test
+        # Direct-guard suite — no DB, no network. Runs in <1s.
+        run: |
+          python -c "
+          from app.services.sql_guard import sanitize_and_validate, UnsafeSQLError
+          cases = [
+              ('DROP TABLE seats', False),
+              ('INSERT INTO users VALUES (1)', False),
+              ('SELECT username FROM users', False),
+              ('SELECT * FROM audit_log', False),
+              ('SELECT * FROM ai_query_log', False),
+              ('SELECT 1; DELETE FROM projects', False),
+              ('UPDATE seats SET status=1', False),
+              ('TRUNCATE seats', False),
+              ('SELECT e.* FROM employees e JOIN users u ON u.employee_id=e.id', False),
+              ('SET row_security = off; SELECT 1', False),
+              ('SELECT COUNT(*) FROM seats', True),
+              ('SELECT * FROM employees LIMIT 5', True),
+              ('WITH t AS (SELECT id FROM seats) SELECT COUNT(*) FROM t', True),
+          ]
+          failed = 0
+          for sql, should_pass in cases:
+              try:
+                  sanitize_and_validate(sql)
+                  ok = should_pass
+              except UnsafeSQLError:
+                  ok = not should_pass
+              status = 'OK' if ok else 'FAIL'
+              print(f'{status}  {sql[:60]}')
+              if not ok:
+                  failed += 1
+          if failed:
+              raise SystemExit(f'{failed} SQL guard cases failed')
+          print(f'All {len(cases)} SQL guard cases passed')
+          "
+
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+        env:
+          NEXT_PUBLIC_API_URL: https://ethara-sapsm.onrender.com
