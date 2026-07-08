@@ -22,6 +22,7 @@ greenlet==3.1.1
 # --- Auth ---
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
+bcrypt==4.0.1                    # pin: passlib 1.7.4 breaks with bcrypt >= 4.1
 python-multipart==0.0.20         # form data for OAuth2 token endpoint
 
 # --- Utility ---
