@@ -2,7 +2,8 @@
 
 import { useEffect, useId, useMemo, useState } from "react";
 
-import { Card, TableShell } from "@/components/ui";
+import { Field, Input } from "@/components/input";
+import { Card, PageHeader, TableShell } from "@/components/ui";
 import { ApiError, apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import type { Allocation, Employee, Page } from "@/lib/types";
@@ -36,7 +37,6 @@ export default function AllocationsPage() {
       setEmpId(null);
       return;
     }
-    // If the user typed a pure number, treat it as the id directly.
     if (/^\d+$/.test(q)) {
       setEmpId(Number(q));
       setEmpMatches([]);
@@ -91,26 +91,31 @@ export default function AllocationsPage() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      <PageHeader
+        title="Allocations"
+        description="Active seat allocations with a full history behind them."
+      />
+
       <Card>
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
-          <div className="md:col-span-2">
-            <label htmlFor={empQueryId} className="text-xs font-medium">
-              Employee (name, email, emp_code, or id)
-            </label>
-            <input
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+          <Field
+            label="Employee"
+            htmlFor={empQueryId}
+            className="md:col-span-2"
+          >
+            <Input
               id={empQueryId}
               value={empQuery}
               onChange={(e) => {
                 setEmpQuery(e.target.value);
                 setOffset(0);
               }}
-              placeholder="e.g. Ankit or E00042 or 42"
-              className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm"
+              placeholder="name, email, code, or id"
             />
             {empQuery.trim() && (
-              <div className="mt-1 text-xs text-muted-foreground">
-                {empSearching && "searching…"}
+              <div className="text-xs text-muted-foreground">
+                {empSearching && "Searching…"}
                 {!empSearching && empMatches.length > 1 && (
                   <div className="mt-1 flex flex-wrap gap-1">
                     {empMatches.map((m) => (
@@ -122,27 +127,27 @@ export default function AllocationsPage() {
                           setEmpQuery(`${m.emp_code} ${m.first_name} ${m.last_name}`);
                           setEmpMatches([]);
                         }}
-                        className="rounded-full border bg-background px-2 py-0.5 text-[11px] hover:bg-accent"
+                        className="rounded-full border border-border bg-background px-2 py-0.5 text-[11px] font-medium hover:bg-accent"
                       >
                         {m.emp_code} · {m.first_name} {m.last_name}
                       </button>
                     ))}
                   </div>
                 )}
-                {!empSearching && empId != null && (
-                  <span className="text-primary">→ employee_id={empId}</span>
+                {!empSearching && empId != null && empMatches.length !== 1 && (
+                  <span className="text-primary">
+                    → matching employee_id={empId}
+                  </span>
                 )}
-                {!empSearching && empQuery.trim() && empMatches.length === 0 && empId == null && (
-                  <span>no matches</span>
-                )}
+                {!empSearching &&
+                  empQuery.trim() &&
+                  empMatches.length === 0 &&
+                  empId == null && <span>No matches</span>}
               </div>
             )}
-          </div>
-          <div>
-            <label htmlFor={seatId} className="text-xs font-medium">
-              Seat id
-            </label>
-            <input
+          </Field>
+          <Field label="Seat id" htmlFor={seatId}>
+            <Input
               id={seatId}
               value={seatFilter}
               onChange={(e) => {
@@ -150,9 +155,8 @@ export default function AllocationsPage() {
                 setOffset(0);
               }}
               placeholder="numeric id"
-              className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm"
             />
-          </div>
+          </Field>
           <div className="flex items-end">
             <label className="inline-flex items-center gap-2 text-sm">
               <input
@@ -162,6 +166,7 @@ export default function AllocationsPage() {
                   setActiveOnly(e.target.checked);
                   setOffset(0);
                 }}
+                className="h-4 w-4 rounded border-border text-primary focus:ring-ring"
               />
               Active only
             </label>
@@ -170,47 +175,54 @@ export default function AllocationsPage() {
       </Card>
 
       {err && (
-        <p className="rounded-md bg-red-50 p-3 text-sm text-red-800 dark:bg-red-950/40 dark:text-red-200">
+        <p className="rounded-md border border-danger/40 bg-danger/10 p-3 text-sm text-danger">
           {err}
         </p>
       )}
 
       <TableShell>
-        <thead className="bg-muted/50 text-left text-xs uppercase text-muted-foreground">
-          <tr>
-            <th className="px-3 py-2">#</th>
-            <th className="px-3 py-2">Seat</th>
-            <th className="px-3 py-2">Employee</th>
-            <th className="px-3 py-2">Allocated</th>
-            <th className="px-3 py-2">Released</th>
-            <th className="px-3 py-2">Note</th>
-            <th className="px-3 py-2"></th>
+        <thead>
+          <tr className="border-b border-border bg-muted/40">
+            <Th>#</Th>
+            <Th>Seat</Th>
+            <Th>Employee</Th>
+            <Th>Allocated</Th>
+            <Th>Released</Th>
+            <Th>Note</Th>
+            <Th className="pr-4 text-right">
+              <span className="sr-only">Actions</span>
+            </Th>
           </tr>
         </thead>
         <tbody>
           {data?.items.map((a) => (
-            <tr key={a.id} className="border-t">
-              <td className="px-3 py-2 font-mono text-xs">{a.id}</td>
-              <td className="px-3 py-2">{a.seat_id}</td>
-              <td className="px-3 py-2">{a.employee_id}</td>
-              <td className="px-3 py-2 text-xs">
+            <tr
+              key={a.id}
+              className="border-b border-border/60 last:border-0 transition-colors hover:bg-accent/40"
+            >
+              <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">
+                {a.id}
+              </td>
+              <td className="px-4 py-2.5 tabular-nums">{a.seat_id}</td>
+              <td className="px-4 py-2.5 tabular-nums">{a.employee_id}</td>
+              <td className="px-4 py-2.5 text-xs text-muted-foreground">
                 {new Date(a.allocated_at).toLocaleString()}
               </td>
-              <td className="px-3 py-2 text-xs">
+              <td className="px-4 py-2.5 text-xs text-muted-foreground">
                 {a.released_at
                   ? new Date(a.released_at).toLocaleString()
                   : "—"}
               </td>
-              <td className="px-3 py-2 text-xs text-muted-foreground">
+              <td className="px-4 py-2.5 text-xs text-muted-foreground">
                 {a.note ?? ""}
               </td>
-              <td className="px-3 py-2 text-right">
+              <td className="pr-4 py-2.5 text-right">
                 {canWrite && a.released_at === null && (
                   <button
                     type="button"
                     disabled={busyId === a.id}
                     onClick={() => release(a.id)}
-                    className="rounded-md border px-2 py-1 text-xs hover:bg-accent disabled:opacity-50"
+                    className="rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium transition hover:bg-accent disabled:opacity-40"
                   >
                     {busyId === a.id ? "…" : "Release"}
                   </button>
@@ -226,12 +238,12 @@ export default function AllocationsPage() {
           <p className="text-muted-foreground">
             {data.total.toLocaleString()} rows · showing {data.items.length}
           </p>
-          <div className="flex gap-2">
+          <div className="flex gap-1.5">
             <button
               type="button"
               disabled={offset === 0}
               onClick={() => setOffset(Math.max(0, offset - limit))}
-              className="rounded-md border px-3 py-1 disabled:opacity-50"
+              className="rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium transition hover:bg-accent disabled:opacity-40"
             >
               Previous
             </button>
@@ -239,7 +251,7 @@ export default function AllocationsPage() {
               type="button"
               disabled={offset + limit >= data.total}
               onClick={() => setOffset(offset + limit)}
-              className="rounded-md border px-3 py-1 disabled:opacity-50"
+              className="rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium transition hover:bg-accent disabled:opacity-40"
             >
               Next
             </button>
@@ -247,5 +259,24 @@ export default function AllocationsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+function Th({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <th
+      className={
+        "px-4 py-2.5 text-left text-[11px] font-medium uppercase tracking-wider text-muted-foreground " +
+        (className ?? "")
+      }
+    >
+      {children}
+    </th>
   );
 }

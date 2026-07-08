@@ -1,9 +1,11 @@
 "use client";
 
+import { ChevronRight, Search } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
-import { Badge, Card, TableShell } from "@/components/ui";
+import { Field, Input, Select } from "@/components/input";
+import { Badge, Card, PageHeader, TableShell } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
 import type { Page, Project, ProjectStatus } from "@/lib/types";
 
@@ -34,72 +36,91 @@ export default function ProjectsPage() {
   }, [query]);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      <PageHeader
+        title="Projects"
+        description="Browse all projects and their staffing."
+      />
+
       <Card>
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-          <div className="md:col-span-2">
-            <label className="text-xs font-medium">Search</label>
-            <input
-              value={q}
-              onChange={(e) => {
-                setQ(e.target.value);
-                setOffset(0);
-              }}
-              placeholder="name, code, client"
-              className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm"
-            />
-          </div>
-          <div>
-            <label className="text-xs font-medium">Status</label>
-            <select
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <Field label="Search" htmlFor="prj-q" className="md:col-span-2">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="prj-q"
+                value={q}
+                onChange={(e) => {
+                  setQ(e.target.value);
+                  setOffset(0);
+                }}
+                placeholder="name, code, or client…"
+                className="pl-8"
+              />
+            </div>
+          </Field>
+          <Field label="Status" htmlFor="prj-status">
+            <Select
+              id="prj-status"
               value={status}
               onChange={(e) => {
                 setStatus(e.target.value as ProjectStatus | "");
                 setOffset(0);
               }}
-              className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm"
             >
               {STATUSES.map((s) => (
                 <option key={s} value={s}>
-                  {s || "any"}
+                  {s || "Any status"}
                 </option>
               ))}
-            </select>
-          </div>
+            </Select>
+          </Field>
         </div>
       </Card>
 
       {err && (
-        <p className="rounded-md bg-red-50 p-3 text-sm text-red-800 dark:bg-red-950/40 dark:text-red-200">{err}</p>
+        <p className="rounded-md border border-danger/40 bg-danger/10 p-3 text-sm text-danger">
+          {err}
+        </p>
       )}
 
       <TableShell>
-        <thead className="bg-muted/50 text-left text-xs uppercase text-muted-foreground">
-          <tr>
-            <th className="px-3 py-2">Code</th>
-            <th className="px-3 py-2">Name</th>
-            <th className="px-3 py-2">Client</th>
-            <th className="px-3 py-2">Status</th>
-            <th className="px-3 py-2 text-right">Required Seats</th>
-            <th className="px-3 py-2"></th>
+        <thead>
+          <tr className="border-b border-border bg-muted/40">
+            <Th>Code</Th>
+            <Th>Name</Th>
+            <Th>Client</Th>
+            <Th>Status</Th>
+            <Th className="text-right">Required</Th>
+            <Th className="text-right pr-4">
+              <span className="sr-only">Actions</span>
+            </Th>
           </tr>
         </thead>
         <tbody>
           {data?.items.map((p) => (
-            <tr key={p.id} className="border-t hover:bg-muted/30">
-              <td className="px-3 py-2 font-mono text-xs">{p.code}</td>
-              <td className="px-3 py-2">{p.name}</td>
-              <td className="px-3 py-2 text-muted-foreground">{p.client}</td>
-              <td className="px-3 py-2">
+            <tr
+              key={p.id}
+              className="border-b border-border/60 last:border-0 transition-colors hover:bg-accent/40"
+            >
+              <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">
+                {p.code}
+              </td>
+              <td className="px-4 py-2.5 font-medium">{p.name}</td>
+              <td className="px-4 py-2.5 text-muted-foreground">{p.client}</td>
+              <td className="px-4 py-2.5">
                 <Badge status={p.status} />
               </td>
-              <td className="px-3 py-2 text-right">{p.required_seats}</td>
-              <td className="px-3 py-2 text-right">
+              <td className="px-4 py-2.5 text-right tabular-nums">
+                {p.required_seats}
+              </td>
+              <td className="pr-4 py-2.5 text-right">
                 <Link
                   href={`/projects/${p.id}`}
-                  className="text-xs font-medium text-primary hover:underline"
+                  className="inline-flex items-center gap-0.5 text-xs font-medium text-primary hover:underline"
                 >
                   View
+                  <ChevronRight className="h-3.5 w-3.5" />
                 </Link>
               </td>
             </tr>
@@ -112,12 +133,12 @@ export default function ProjectsPage() {
           <p className="text-muted-foreground">
             {data.total} projects · showing {data.items.length}
           </p>
-          <div className="flex gap-2">
+          <div className="flex gap-1.5">
             <button
               type="button"
               disabled={offset === 0}
               onClick={() => setOffset(Math.max(0, offset - limit))}
-              className="rounded-md border px-3 py-1 disabled:opacity-50"
+              className="rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium transition hover:bg-accent disabled:opacity-40"
             >
               Previous
             </button>
@@ -125,7 +146,7 @@ export default function ProjectsPage() {
               type="button"
               disabled={offset + limit >= data.total}
               onClick={() => setOffset(offset + limit)}
-              className="rounded-md border px-3 py-1 disabled:opacity-50"
+              className="rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium transition hover:bg-accent disabled:opacity-40"
             >
               Next
             </button>
@@ -133,5 +154,24 @@ export default function ProjectsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+function Th({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <th
+      className={
+        "px-4 py-2.5 text-left text-[11px] font-medium uppercase tracking-wider text-muted-foreground " +
+        (className ?? "")
+      }
+    >
+      {children}
+    </th>
   );
 }

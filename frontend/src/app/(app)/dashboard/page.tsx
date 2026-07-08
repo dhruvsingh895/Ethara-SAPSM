@@ -1,5 +1,12 @@
 "use client";
 
+import {
+  Building2,
+  CalendarDays,
+  FolderKanban,
+  Percent,
+  Users,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import {
   Bar,
@@ -15,19 +22,21 @@ import {
   YAxis,
 } from "recharts";
 
-import { Card, Stat } from "@/components/ui";
+import { Card, PageHeader, Stat } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
+import { useTheme } from "@/lib/theme-context";
 import type {
   FloorOccupancy,
   Overview,
   ProjectUtilization,
 } from "@/lib/types";
 
-const SEAT_COLORS: Record<string, string> = {
-  Occupied: "hsl(217, 91%, 60%)",
-  Available: "hsl(142, 71%, 45%)",
-  Reserved: "hsl(45, 100%, 51%)",
-  Blocked: "hsl(0, 84%, 60%)",
+const CHART_COLORS = {
+  occupied: "hsl(234, 89%, 66%)",
+  available: "hsl(142, 71%, 45%)",
+  reserved: "hsl(45, 100%, 51%)",
+  blocked: "hsl(0, 84%, 60%)",
+  other: "hsl(240, 5%, 45%)",
 };
 
 export default function DashboardPage() {
@@ -52,17 +61,26 @@ export default function DashboardPage() {
 
   if (err)
     return (
-      <p className="rounded-md bg-red-50 p-4 text-sm text-red-800 dark:bg-red-950/40 dark:text-red-200">
+      <p className="rounded-md border border-danger/40 bg-danger/10 p-4 text-sm text-danger">
         Failed to load dashboard: {err}
       </p>
     );
-  if (!overview) return <p className="text-sm text-muted-foreground">Loading…</p>;
+  if (!overview)
+    return (
+      <div className="space-y-4">
+        <PageHeader
+          title="Dashboard"
+          description="A live view of seat occupancy, headcount, and project utilization."
+        />
+        <p className="text-sm text-muted-foreground">Loading…</p>
+      </div>
+    );
 
   const pieData = [
-    { name: "Occupied", value: overview.occupancy.occupied },
-    { name: "Available", value: overview.occupancy.available },
-    { name: "Reserved", value: overview.occupancy.reserved },
-    { name: "Blocked", value: overview.occupancy.blocked },
+    { name: "Occupied", value: overview.occupancy.occupied, color: CHART_COLORS.occupied },
+    { name: "Available", value: overview.occupancy.available, color: CHART_COLORS.available },
+    { name: "Reserved", value: overview.occupancy.reserved, color: CHART_COLORS.reserved },
+    { name: "Blocked", value: overview.occupancy.blocked, color: CHART_COLORS.blocked },
   ];
 
   const floorData = byFloor.map((f) => ({
@@ -78,114 +96,263 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      <PageHeader
+        title="Dashboard"
+        description="A live view of seat occupancy, headcount, and project utilization."
+      />
+
+      {/* Stats grid */}
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         <Stat
           label="Occupancy"
           value={`${overview.occupancy.occupancy_pct.toFixed(1)}%`}
-          hint={`${overview.occupancy.occupied} of ${overview.occupancy.total_seats} seats`}
+          hint={`${overview.occupancy.occupied.toLocaleString()} of ${overview.occupancy.total_seats.toLocaleString()} seats`}
+          icon={<Percent />}
         />
         <Stat
           label="Active employees"
           value={overview.active_employees.toLocaleString()}
+          hint={`${overview.joiners_last_30_days} joined recently`}
+          icon={<Users />}
         />
         <Stat
-          label="Joiners in 30 days"
+          label="Joiners · 30 days"
           value={overview.joiners_last_30_days}
+          hint="Onboarding pipeline"
+          icon={<CalendarDays />}
         />
         <Stat
           label="Active projects"
           value={overview.active_projects}
+          hint="Currently staffed"
+          icon={<FolderKanban />}
         />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card className="h-80">
-          <p className="text-sm font-medium">Seat status</p>
-          <ResponsiveContainer width="100%" height="90%">
-            <PieChart>
-              <Pie
-                data={pieData}
-                dataKey="value"
-                nameKey="name"
-                innerRadius={45}
-                outerRadius={90}
-                paddingAngle={2}
-                label={(entry) => `${entry.name}: ${entry.value}`}
-              >
-                {pieData.map((d) => (
-                  <Cell key={d.name} fill={SEAT_COLORS[d.name]} />
-                ))}
-              </Pie>
-              <Tooltip />
-            </PieChart>
-          </ResponsiveContainer>
+      {/* Charts row */}
+      <div className="grid gap-4 lg:grid-cols-5">
+        <Card className="flex flex-col lg:col-span-2">
+          <div>
+            <p className="text-sm font-medium">Seat status</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Distribution across all 6,000 seats
+            </p>
+          </div>
+          <div className="mt-4 flex-1" style={{ minHeight: 260 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={pieData}
+                  dataKey="value"
+                  nameKey="name"
+                  innerRadius={55}
+                  outerRadius={90}
+                  paddingAngle={3}
+                  strokeWidth={0}
+                >
+                  {pieData.map((d) => (
+                    <Cell key={d.name} fill={d.color} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  contentStyle={{
+                    background: "hsl(var(--card))",
+                    border: "1px solid hsl(var(--border))",
+                    borderRadius: 8,
+                    fontSize: 12,
+                    color: "hsl(var(--card-foreground))",
+                  }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="mt-2 grid grid-cols-2 gap-1.5 text-xs">
+            {pieData.map((d) => (
+              <div key={d.name} className="flex items-center gap-1.5">
+                <span
+                  className="h-2 w-2 rounded-full"
+                  style={{ background: d.color }}
+                />
+                <span className="text-muted-foreground">{d.name}</span>
+                <span className="ml-auto tabular-nums font-medium">
+                  {d.value.toLocaleString()}
+                </span>
+              </div>
+            ))}
+          </div>
         </Card>
 
-        <Card className="h-80">
-          <p className="text-sm font-medium">Top departments (active headcount)</p>
-          <ResponsiveContainer width="100%" height="90%">
-            <BarChart
-              data={overview.top_departments}
-              layout="vertical"
-              margin={{ left: 20 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis type="number" />
-              <YAxis dataKey="department" type="category" width={100} />
-              <Tooltip />
-              <Bar dataKey="active" fill={SEAT_COLORS.Occupied} radius={[0, 4, 4, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+        <Card className="flex flex-col lg:col-span-3">
+          <div>
+            <p className="text-sm font-medium">Top departments</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Active headcount
+            </p>
+          </div>
+          <div className="mt-4 flex-1" style={{ minHeight: 260 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={overview.top_departments}
+                layout="vertical"
+                margin={{ left: 8, right: 12, top: 4, bottom: 0 }}
+              >
+                <CartesianGrid
+                  horizontal={false}
+                  strokeDasharray="3 3"
+                  stroke="hsl(var(--border))"
+                />
+                <XAxis
+                  type="number"
+                  tickLine={false}
+                  axisLine={false}
+                  tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
+                />
+                <YAxis
+                  dataKey="department"
+                  type="category"
+                  tickLine={false}
+                  axisLine={false}
+                  width={90}
+                  tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
+                />
+                <Tooltip
+                  cursor={{ fill: "hsl(var(--accent))" }}
+                  contentStyle={{
+                    background: "hsl(var(--card))",
+                    border: "1px solid hsl(var(--border))",
+                    borderRadius: 8,
+                    fontSize: 12,
+                    color: "hsl(var(--card-foreground))",
+                  }}
+                />
+                <Bar
+                  dataKey="active"
+                  fill={CHART_COLORS.occupied}
+                  radius={[0, 6, 6, 0]}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </Card>
       </div>
 
-      <Card className="h-96">
-        <p className="text-sm font-medium">Occupancy by floor</p>
-        <ResponsiveContainer width="100%" height="92%">
-          <BarChart data={floorData}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="label" />
-            <YAxis />
-            <Tooltip />
-            <Legend />
-            <Bar dataKey="occupied" stackId="a" fill={SEAT_COLORS.Occupied} />
-            <Bar dataKey="available" stackId="a" fill={SEAT_COLORS.Available} />
-            <Bar dataKey="other" stackId="a" fill="#d4d4d8" name="reserved/blocked" />
-          </BarChart>
-        </ResponsiveContainer>
+      {/* Floor occupancy */}
+      <Card className="flex flex-col">
+        <div>
+          <p className="text-sm font-medium">Occupancy by floor</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Occupied vs available seats — 3 buildings × 5 floors
+          </p>
+        </div>
+        <div className="mt-4" style={{ height: 300 }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={floorData} margin={{ top: 4, right: 12, left: 0, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+              <XAxis
+                dataKey="label"
+                tickLine={false}
+                axisLine={false}
+                tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
+              />
+              <YAxis
+                tickLine={false}
+                axisLine={false}
+                tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
+              />
+              <Tooltip
+                cursor={{ fill: "hsl(var(--accent))" }}
+                contentStyle={{
+                  background: "hsl(var(--card))",
+                  border: "1px solid hsl(var(--border))",
+                  borderRadius: 8,
+                  fontSize: 12,
+                  color: "hsl(var(--card-foreground))",
+                }}
+              />
+              <Legend
+                wrapperStyle={{ fontSize: 11 }}
+                iconType="circle"
+                iconSize={8}
+              />
+              <Bar
+                dataKey="occupied"
+                stackId="a"
+                fill={CHART_COLORS.occupied}
+                radius={[0, 0, 0, 0]}
+              />
+              <Bar dataKey="available" stackId="a" fill={CHART_COLORS.available} />
+              <Bar
+                dataKey="other"
+                stackId="a"
+                fill={CHART_COLORS.other}
+                name="reserved/blocked"
+                radius={[4, 4, 0, 0]}
+              />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
       </Card>
 
+      {/* Project utilization table */}
       <Card>
-        <p className="mb-3 text-sm font-medium">Top project utilization</p>
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium">Top project utilization</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Active members vs required seats
+            </p>
+          </div>
+        </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="text-left text-xs uppercase text-muted-foreground">
-              <tr>
-                <th className="py-2">Code</th>
-                <th>Name</th>
-                <th className="text-right">Members</th>
-                <th className="text-right">Required</th>
-                <th className="text-right">Utilization</th>
+            <thead>
+              <tr className="border-b border-border">
+                <th className="pb-2 text-left text-[11px] uppercase tracking-wider text-muted-foreground font-medium">
+                  Code
+                </th>
+                <th className="pb-2 text-left text-[11px] uppercase tracking-wider text-muted-foreground font-medium">
+                  Name
+                </th>
+                <th className="pb-2 text-right text-[11px] uppercase tracking-wider text-muted-foreground font-medium">
+                  Members
+                </th>
+                <th className="pb-2 text-right text-[11px] uppercase tracking-wider text-muted-foreground font-medium">
+                  Required
+                </th>
+                <th className="pb-2 text-right text-[11px] uppercase tracking-wider text-muted-foreground font-medium">
+                  Utilization
+                </th>
               </tr>
             </thead>
             <tbody>
               {topUtil.map((u) => (
-                <tr key={u.project_id} className="border-t">
-                  <td className="py-2 font-mono text-xs">{u.project_code}</td>
-                  <td>{u.project_name}</td>
-                  <td className="text-right">{u.active_members}</td>
-                  <td className="text-right">{u.required_seats}</td>
-                  <td
-                    className={
-                      "text-right font-medium " +
-                      (u.utilization_pct > 100
-                        ? "text-red-600 dark:text-red-400"
-                        : u.utilization_pct < 50
-                        ? "text-yellow-600 dark:text-yellow-400"
-                        : "text-green-700 dark:text-green-400")
-                    }
-                  >
-                    {u.utilization_pct.toFixed(1)}%
+                <tr
+                  key={u.project_id}
+                  className="border-b border-border/60 last:border-0 hover:bg-accent/40"
+                >
+                  <td className="py-2.5 font-mono text-xs text-muted-foreground">
+                    {u.project_code}
+                  </td>
+                  <td className="py-2.5 font-medium">{u.project_name}</td>
+                  <td className="py-2.5 text-right tabular-nums">
+                    {u.active_members}
+                  </td>
+                  <td className="py-2.5 text-right tabular-nums text-muted-foreground">
+                    {u.required_seats}
+                  </td>
+                  <td className="py-2.5 text-right">
+                    <span
+                      className={
+                        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium tabular-nums " +
+                        (u.utilization_pct > 100
+                          ? "bg-danger/10 text-danger"
+                          : u.utilization_pct < 50
+                            ? "bg-warning/10 text-warning"
+                            : "bg-success/10 text-success")
+                      }
+                    >
+                      {u.utilization_pct.toFixed(1)}%
+                    </span>
                   </td>
                 </tr>
               ))}

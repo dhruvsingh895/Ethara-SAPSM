@@ -1,5 +1,6 @@
 "use client";
 
+import { ArrowLeft, Building2, Calendar, User } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -30,82 +31,120 @@ export default function ProjectDetailPage() {
 
   if (err)
     return (
-      <p className="rounded-md bg-red-50 p-4 text-sm text-red-800 dark:bg-red-950/40 dark:text-red-200">{err}</p>
+      <p className="rounded-md border border-danger/40 bg-danger/10 p-4 text-sm text-danger">
+        {err}
+      </p>
     );
   if (!project)
     return <p className="text-sm text-muted-foreground">Loading…</p>;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <Link
         href="/projects"
-        className="text-sm text-muted-foreground hover:underline"
+        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
       >
-        ← Back to projects
+        <ArrowLeft className="h-4 w-4" />
+        Back to projects
       </Link>
 
       <Card>
-        <div className="flex items-start justify-between">
+        <div className="flex items-start justify-between gap-3">
           <div>
-            <h1 className="text-xl font-semibold">{project.name}</h1>
-            <p className="mt-1 font-mono text-xs text-muted-foreground">
-              {project.code}
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-semibold tracking-tight">
+                {project.name}
+              </h1>
+              <Badge status={project.status} />
+            </div>
+            <p className="mt-1 text-sm text-muted-foreground">
+              <span className="font-mono">{project.code}</span> ·{" "}
+              {project.client}
             </p>
           </div>
-          <Badge status={project.status} />
         </div>
-        <div className="mt-4 grid gap-4 text-sm md:grid-cols-2">
-          <Field label="Client" value={project.client} />
-          <Field label="Required seats" value={project.required_seats} />
-          <Field label="Start" value={project.start_date} />
-          <Field label="End" value={project.end_date ?? "—"} />
-          {project.description && (
-            <div className="md:col-span-2">
-              <Field label="Description" value={project.description} />
-            </div>
-          )}
+
+        <div className="mt-6 grid gap-4 text-sm md:grid-cols-4">
+          <InfoRow icon={Building2} label="Client" value={project.client} />
+          <InfoRow
+            icon={User}
+            label="Required seats"
+            value={project.required_seats}
+          />
+          <InfoRow icon={Calendar} label="Start" value={project.start_date} />
+          <InfoRow
+            icon={Calendar}
+            label="End"
+            value={project.end_date ?? "—"}
+          />
         </div>
+
+        {project.description && (
+          <div className="divider mt-6 pt-4">
+            <p className="label-cap">Description</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {project.description}
+            </p>
+          </div>
+        )}
       </Card>
 
       <Card>
-        <div className="mb-3 flex items-center justify-between">
-          <p className="text-sm font-medium">Active roster</p>
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium">Active roster</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Currently assigned members
+            </p>
+          </div>
           <p className="text-xs text-muted-foreground">
             {roster.length} member{roster.length === 1 ? "" : "s"}
           </p>
         </div>
         <TableShell>
-          <thead className="bg-muted/50 text-left text-xs uppercase text-muted-foreground">
-            <tr>
-              <th className="px-3 py-2">Employee</th>
-              <th className="px-3 py-2">Role</th>
-              <th className="px-3 py-2 text-right">Allocation</th>
-              <th className="px-3 py-2">Start</th>
-              <th className="px-3 py-2">End</th>
+          <thead>
+            <tr className="border-b border-border bg-muted/40">
+              <Th>Employee</Th>
+              <Th>Role</Th>
+              <Th className="text-right">Allocation</Th>
+              <Th>Start</Th>
+              <Th>End</Th>
             </tr>
           </thead>
           <tbody>
             {roster.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-3 py-6 text-center text-muted-foreground">
+                <td
+                  colSpan={5}
+                  className="px-4 py-10 text-center text-sm text-muted-foreground"
+                >
                   No active assignments.
                 </td>
               </tr>
             )}
             {roster.map((a) => (
-              <tr key={a.id} className="border-t">
-                <td className="px-3 py-2">
+              <tr
+                key={a.id}
+                className="border-b border-border/60 last:border-0 transition-colors hover:bg-accent/40"
+              >
+                <td className="px-4 py-2.5">
                   <Link
                     href={`/employees/${a.employee_id}`}
-                    className="text-primary hover:underline"
+                    className="text-sm font-medium text-primary hover:underline"
                   >
                     #{a.employee_id}
                   </Link>
                 </td>
-                <td className="px-3 py-2">{a.role}</td>
-                <td className="px-3 py-2 text-right">{a.allocation_pct}%</td>
-                <td className="px-3 py-2">{a.start_date}</td>
-                <td className="px-3 py-2">{a.end_date ?? "—"}</td>
+                <td className="px-4 py-2.5">{a.role}</td>
+                <td className="px-4 py-2.5 text-right tabular-nums">
+                  {a.allocation_pct}%
+                </td>
+                <td className="px-4 py-2.5 text-muted-foreground">
+                  {a.start_date}
+                </td>
+                <td className="px-4 py-2.5 text-muted-foreground">
+                  {a.end_date ?? "—"}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -115,13 +154,41 @@ export default function ProjectDetailPage() {
   );
 }
 
-function Field({ label, value }: { label: string; value: React.ReactNode }) {
+function Th({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
   return (
-    <div>
-      <p className="text-xs uppercase tracking-wide text-muted-foreground">
-        {label}
-      </p>
-      <p className="mt-0.5">{value}</p>
+    <th
+      className={
+        "px-4 py-2.5 text-left text-[11px] font-medium uppercase tracking-wider text-muted-foreground " +
+        (className ?? "")
+      }
+    >
+      {children}
+    </th>
+  );
+}
+
+function InfoRow({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-start gap-3">
+      <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+      <div className="min-w-0">
+        <p className="label-cap">{label}</p>
+        <p className="mt-0.5 truncate text-sm">{value}</p>
+      </div>
     </div>
   );
 }

@@ -1,11 +1,14 @@
 "use client";
 
+import { CheckCircle2, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useId, useState } from "react";
 
-import { Badge, Card } from "@/components/ui";
+import { Field, Input, Select } from "@/components/input";
+import { Badge, Card, PageHeader } from "@/components/ui";
 import { ApiError, apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { cn } from "@/lib/utils";
 import type { Allocation, Employee, Page, Seat } from "@/lib/types";
 
 const DEPARTMENTS = [
@@ -36,28 +39,22 @@ export default function NewJoinerPage() {
   const { hasRole } = useAuth();
   const authorized = hasRole("admin", "hr");
 
-  // Step 1 — create employee
   const [creating, setCreating] = useState(false);
   const [empId, setEmpId] = useState<string>("");
   const [createdEmp, setCreatedEmp] = useState<Employee | null>(null);
 
-  // Step 2 — suggest
   const [department, setDepartment] = useState("Engineering");
   const [projectId, setProjectId] = useState<string>("");
   const [suggestions, setSuggestions] = useState<Seat[]>([]);
 
-  // Step 3 — pick
   const [chosen, setChosen] = useState<Seat | null>(null);
-
-  // Step 4 — allocate
   const [result, setResult] = useState<Allocation | null>(null);
-
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   if (!authorized) {
     return (
-      <p className="rounded-md bg-yellow-50 p-4 text-sm text-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-200">
+      <p className="rounded-md border border-warning/40 bg-warning/10 p-4 text-sm text-warning">
         Only HR or Admin can use the new-joiner flow.
       </p>
     );
@@ -105,25 +102,31 @@ export default function NewJoinerPage() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      <PageHeader
+        title="New joiner"
+        description="Create the employee, pick a seat near their team, and allocate — in a single flow."
+      />
+
+      {/* Step 1 — create or use existing */}
       <Card>
-        <div className="flex items-center justify-between">
+        <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-sm font-medium">
-              1. Create the joiner (or use an existing employee id)
-            </p>
+            <p className="label-cap">Step 1</p>
+            <p className="mt-1 text-sm font-medium">Add the joiner</p>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              Fill the form to create a new record, or just paste an existing
-              employee id below to skip.
+              Create a new employee record, or paste an existing employee id
+              to skip ahead.
             </p>
           </div>
           {!creating && !createdEmp && (
             <button
               type="button"
               onClick={() => setCreating(true)}
-              className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground"
+              className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground shadow-sm transition hover:opacity-90"
             >
-              + New employee
+              <Sparkles className="h-4 w-4" />
+              New employee
             </button>
           )}
         </div>
@@ -142,16 +145,16 @@ export default function NewJoinerPage() {
         )}
 
         {createdEmp && (
-          <div className="mt-3 rounded-md border bg-muted/30 p-3 text-sm">
+          <div className="mt-4 rounded-lg border border-success/40 bg-success/10 p-3">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium">
-                  {createdEmp.first_name} {createdEmp.last_name}{" "}
-                  <span className="font-mono text-xs text-muted-foreground">
-                    ({createdEmp.emp_code})
+              <div className="min-w-0">
+                <p className="text-sm font-medium">
+                  {createdEmp.first_name} {createdEmp.last_name}
+                  <span className="ml-2 font-mono text-xs text-muted-foreground">
+                    {createdEmp.emp_code}
                   </span>
                 </p>
-                <p className="text-xs text-muted-foreground">
+                <p className="mt-0.5 text-xs text-muted-foreground">
                   {createdEmp.designation} · {createdEmp.department} · id ={" "}
                   {createdEmp.id}
                 </p>
@@ -162,7 +165,7 @@ export default function NewJoinerPage() {
                   setCreatedEmp(null);
                   setEmpId("");
                 }}
-                className="rounded-md border px-2 py-1 text-xs hover:bg-accent"
+                className="rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium transition hover:bg-accent"
               >
                 Change
               </button>
@@ -171,78 +174,77 @@ export default function NewJoinerPage() {
         )}
 
         {!creating && !createdEmp && (
-          <div className="mt-3">
-            <label className="text-xs font-medium">
-              …or use an existing employee id
-            </label>
-            <input
-              value={empId}
-              onChange={(e) => setEmpId(e.target.value)}
-              placeholder="e.g. 42"
-              className="mt-1 w-full max-w-xs rounded-md border bg-background px-3 py-2 text-sm"
-            />
+          <div className="mt-4">
+            <Field label="Or use an existing employee id" htmlFor="nj-emp-id">
+              <Input
+                id="nj-emp-id"
+                value={empId}
+                onChange={(e) => setEmpId(e.target.value)}
+                placeholder="e.g. 42"
+                className="max-w-xs"
+              />
+            </Field>
           </div>
         )}
       </Card>
 
+      {/* Step 2 — suggest */}
       <Card>
-        <p className="text-sm font-medium">2. Find a seat near their team</p>
-        <div className="mt-3 grid gap-3 md:grid-cols-3">
-          <div>
-            <label htmlFor="nj-dept" className="text-xs font-medium">
-              Department
-            </label>
-            <select
+        <p className="label-cap">Step 2</p>
+        <p className="mt-1 text-sm font-medium">Find a seat near their team</p>
+        <div className="mt-4 grid gap-4 md:grid-cols-3">
+          <Field label="Department" htmlFor="nj-dept">
+            <Select
               id="nj-dept"
               value={department}
               onChange={(e) => setDepartment(e.target.value)}
-              className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm"
             >
               {DEPARTMENTS.map((d) => (
                 <option key={d}>{d}</option>
               ))}
-            </select>
-          </div>
-          <div>
-            <label htmlFor="nj-proj" className="text-xs font-medium">
-              Project id (optional)
-            </label>
-            <input
+            </Select>
+          </Field>
+          <Field label="Project id (optional)" htmlFor="nj-proj">
+            <Input
               id="nj-proj"
               value={projectId}
               onChange={(e) => setProjectId(e.target.value)}
               placeholder="e.g. 1"
-              className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm"
             />
-          </div>
+          </Field>
           <div className="flex items-end">
             <button
               type="button"
               onClick={suggest}
               disabled={busy}
-              className="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-60"
+              className="inline-flex w-full items-center justify-center gap-1.5 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm transition hover:opacity-90 disabled:opacity-60"
             >
+              <Sparkles className="h-4 w-4" />
               {busy ? "Working…" : "Suggest seats"}
             </button>
           </div>
         </div>
       </Card>
 
+      {/* Step 3 — pick */}
       {suggestions.length > 0 && (
         <Card>
-          <p className="text-sm font-medium">3. Pick one</p>
-          <div className="mt-3 grid gap-2 md:grid-cols-4">
+          <p className="label-cap">Step 3</p>
+          <p className="mt-1 text-sm font-medium">Pick one</p>
+          <div className="mt-4 grid gap-3 md:grid-cols-4">
             {suggestions.map((s) => (
               <button
                 key={s.id}
                 type="button"
                 onClick={() => setChosen(s)}
-                className={
-                  "rounded-md border p-3 text-left text-sm hover:bg-accent " +
-                  (chosen?.id === s.id ? "border-primary ring-2 ring-primary" : "")
-                }
+                className={cn(
+                  "rounded-lg border p-3 text-left transition",
+                  chosen?.id === s.id
+                    ? "border-primary bg-primary/5 ring-2 ring-primary/50"
+                    : "border-border hover:border-primary/50 hover:bg-accent",
+                )}
               >
-                <p className="font-mono text-xs">{s.seat_code}</p>
+                <p className="font-mono text-xs font-medium">{s.seat_code}</p>
                 <p className="mt-1 text-xs text-muted-foreground">
                   {s.building} · F{s.floor} · {s.zone}
                 </p>
@@ -255,24 +257,29 @@ export default function NewJoinerPage() {
         </Card>
       )}
 
+      {/* Step 4 — allocate */}
       {chosen && (
         <Card>
-          <p className="text-sm font-medium">4. Allocate</p>
-          <div className="mt-3 flex flex-wrap items-end gap-3">
-            <div className="grow">
-              <label className="text-xs font-medium">Employee id</label>
-              <input
+          <p className="label-cap">Step 4</p>
+          <p className="mt-1 text-sm font-medium">Allocate</p>
+          <div className="mt-4 flex flex-wrap items-end gap-3">
+            <Field
+              label="Employee id"
+              htmlFor="nj-allocate-emp"
+              className="flex-1 min-w-[200px]"
+            >
+              <Input
+                id="nj-allocate-emp"
                 value={empId}
                 onChange={(e) => setEmpId(e.target.value)}
                 placeholder="from step 1 above"
-                className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm"
               />
-            </div>
+            </Field>
             <button
               type="button"
               onClick={allocate}
               disabled={busy || !empId.trim()}
-              className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-60"
+              className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm transition hover:opacity-90 disabled:opacity-60"
             >
               Allocate {chosen.seat_code}
             </button>
@@ -281,26 +288,31 @@ export default function NewJoinerPage() {
       )}
 
       {err && (
-        <p className="rounded-md bg-red-50 p-3 text-sm text-red-800 dark:bg-red-950/40 dark:text-red-200">
+        <p className="rounded-md border border-danger/40 bg-danger/10 p-3 text-sm text-danger">
           {err}
         </p>
       )}
 
       {result && (
-        <Card>
-          <p className="text-sm font-medium text-green-700 dark:text-green-400">
-            Allocation #{result.id} created
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Seat {result.seat_id} → Employee{" "}
-            <Link
-              href={`/employees/${result.employee_id}`}
-              className="text-primary hover:underline"
-            >
-              {result.employee_id}
-            </Link>{" "}
-            at {new Date(result.allocated_at).toLocaleString()}
-          </p>
+        <Card className="border-success/40 bg-success/10">
+          <div className="flex items-center gap-3">
+            <CheckCircle2 className="h-6 w-6 shrink-0 text-success" />
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-success">
+                Allocation #{result.id} created
+              </p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Seat {result.seat_id} → Employee{" "}
+                <Link
+                  href={`/employees/${result.employee_id}`}
+                  className="font-medium text-primary hover:underline"
+                >
+                  {result.employee_id}
+                </Link>{" "}
+                at {new Date(result.allocated_at).toLocaleString()}
+              </p>
+            </div>
+          </div>
         </Card>
       )}
     </div>
@@ -330,14 +342,12 @@ function NewEmployeeForm({
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  // Look up next emp_code hint from the total employee count.
   useEffect(() => {
     apiFetch<Page<Employee>>("/api/v1/employees?limit=1&offset=0")
       .then((p) => setEmpCode(`E${String(p.total + 1).padStart(5, "0")}`))
       .catch(() => setEmpCode("E00001"));
   }, []);
 
-  // Keep designation aligned to department if the user hasn't customized.
   useEffect(() => {
     setDesignation((cur) => {
       const defaults = Object.values(DEFAULT_DESIGNATIONS);
@@ -374,56 +384,52 @@ function NewEmployeeForm({
   }
 
   return (
-    <form onSubmit={submit} className="mt-3 space-y-3 text-sm">
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-        <Field label="Emp code" value={empCode} onChange={setEmpCode} />
-        <div>
-          <label htmlFor="nj-form-dept" className="text-xs font-medium">
-            Department
-          </label>
-          <select
+    <form onSubmit={submit} className="mt-4 space-y-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <FormField label="Employee code" value={empCode} onChange={setEmpCode} />
+        <Field label="Department" htmlFor="nj-form-dept">
+          <Select
             id="nj-form-dept"
             value={department}
             onChange={(e) => setDepartment(e.target.value)}
-            className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm"
           >
             {DEPARTMENTS.map((d) => (
               <option key={d}>{d}</option>
             ))}
-          </select>
-        </div>
-        <Field label="First name" value={firstName} onChange={setFirstName} required />
-        <Field label="Last name" value={lastName} onChange={setLastName} required />
-        <Field label="Email" type="email" value={email} onChange={setEmail} required />
-        <Field label="Designation" value={designation} onChange={setDesignation} required />
-        <Field
+          </Select>
+        </Field>
+        <FormField label="First name" value={firstName} onChange={setFirstName} required />
+        <FormField label="Last name" value={lastName} onChange={setLastName} required />
+        <FormField label="Email" type="email" value={email} onChange={setEmail} required />
+        <FormField label="Designation" value={designation} onChange={setDesignation} required />
+        <FormField
           label="Joining date"
           type="date"
           value={joiningDate}
           onChange={setJoiningDate}
           required
         />
-        <Field label="Phone" value={phone} onChange={setPhone} />
+        <FormField label="Phone" value={phone} onChange={setPhone} />
       </div>
 
       {err && (
-        <p className="rounded-md bg-red-50 p-2 text-sm text-red-800 dark:bg-red-950/40 dark:text-red-200">
+        <p className="rounded-md border border-danger/40 bg-danger/10 p-3 text-sm text-danger">
           {err}
         </p>
       )}
 
-      <div className="flex justify-end gap-2 pt-1">
+      <div className="flex justify-end gap-2">
         <button
           type="button"
           onClick={onCancel}
-          className="rounded-md border px-3 py-1.5 text-sm hover:bg-accent"
+          className="rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium transition hover:bg-accent"
         >
           Cancel
         </button>
         <button
           type="submit"
           disabled={busy}
-          className="rounded-md bg-primary px-4 py-1.5 text-sm font-medium text-primary-foreground disabled:opacity-60"
+          className="rounded-md bg-primary px-4 py-1.5 text-sm font-medium text-primary-foreground shadow-sm transition hover:opacity-90 disabled:opacity-60"
         >
           {busy ? "Creating…" : "Create employee"}
         </button>
@@ -432,7 +438,7 @@ function NewEmployeeForm({
   );
 }
 
-function Field({
+function FormField({
   label,
   value,
   onChange,
@@ -447,19 +453,15 @@ function Field({
 }) {
   const id = useId();
   return (
-    <div>
-      <label htmlFor={id} className="text-xs font-medium">
-        {label}
-      </label>
-      <input
+    <Field label={label} htmlFor={id}>
+      <Input
         id={id}
         type={type}
         value={value}
         required={required}
         placeholder={label}
         onChange={(e) => onChange(e.target.value)}
-        className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm"
       />
-    </div>
+    </Field>
   );
 }

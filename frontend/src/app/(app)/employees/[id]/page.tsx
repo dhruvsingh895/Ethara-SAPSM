@@ -1,5 +1,6 @@
 "use client";
 
+import { ArrowLeft, Building2, Briefcase, Mail, Phone, User } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -35,77 +36,102 @@ export default function EmployeeDetailPage() {
 
   if (err)
     return (
-      <p className="rounded-md bg-red-50 p-4 text-sm text-red-800 dark:bg-red-950/40 dark:text-red-200">{err}</p>
+      <p className="rounded-md border border-danger/40 bg-danger/10 p-4 text-sm text-danger">
+        {err}
+      </p>
     );
-  if (!emp) return <p className="text-sm text-muted-foreground">Loading…</p>;
+  if (!emp)
+    return <p className="text-sm text-muted-foreground">Loading…</p>;
+
+  const initials = `${emp.first_name[0] ?? ""}${emp.last_name[0] ?? ""}`.toUpperCase();
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <Link
         href="/employees"
-        className="text-sm text-muted-foreground hover:underline"
+        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
       >
-        ← Back to employees
+        <ArrowLeft className="h-4 w-4" />
+        Back to employees
       </Link>
 
+      {/* Header card */}
       <Card>
-        <div className="flex items-start justify-between">
-          <div>
-            <h1 className="text-xl font-semibold">
-              {emp.first_name} {emp.last_name}
-            </h1>
-            <p className="mt-1 font-mono text-xs text-muted-foreground">
-              {emp.emp_code}
+        <div className="flex items-start gap-4">
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <span className="text-lg font-semibold">{initials}</span>
+          </div>
+          <div className="flex-1">
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-semibold tracking-tight">
+                {emp.first_name} {emp.last_name}
+              </h1>
+              <Badge status={emp.status} />
+            </div>
+            <p className="mt-1 text-sm text-muted-foreground">
+              <span className="font-mono">{emp.emp_code}</span> ·{" "}
+              {emp.designation} · {emp.department}
             </p>
           </div>
-          <Badge status={emp.status} />
         </div>
 
-        <div className="mt-4 grid gap-4 text-sm md:grid-cols-2">
-          <Field label="Email" value={emp.email} />
-          <Field label="Phone" value={emp.phone ?? "—"} />
-          <Field label="Department" value={emp.department} />
-          <Field label="Designation" value={emp.designation} />
-          <Field label="Joined" value={emp.joining_date} />
-          <Field label="Exit date" value={emp.exit_date ?? "—"} />
+        <div className="mt-6 grid gap-4 text-sm md:grid-cols-2">
+          <InfoRow icon={Mail} label="Email" value={emp.email} />
+          <InfoRow icon={Phone} label="Phone" value={emp.phone ?? "—"} />
+          <InfoRow icon={Briefcase} label="Designation" value={emp.designation} />
+          <InfoRow icon={Building2} label="Department" value={emp.department} />
+          <InfoRow icon={User} label="Joined" value={emp.joining_date} />
+          <InfoRow
+            icon={User}
+            label="Exit date"
+            value={emp.exit_date ?? "—"}
+          />
         </div>
       </Card>
 
+      {/* Seat + project */}
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
-          <p className="text-sm font-medium">Current seat</p>
+          <p className="label-cap">Current seat</p>
           {seat ? (
-            <div className="mt-2 space-y-1 text-sm">
-              <p className="font-mono">{seat.seat_code}</p>
+            <div className="mt-3 space-y-2 text-sm">
+              <p className="font-mono text-base font-semibold tracking-tight">
+                {seat.seat_code}
+              </p>
               <p className="text-xs text-muted-foreground">
                 {seat.building} · Floor {seat.floor} · Zone {seat.zone}
               </p>
-              <Badge status={seat.status} />
+              <div>
+                <Badge status={seat.status} />
+              </div>
             </div>
           ) : (
-            <p className="mt-2 text-sm text-muted-foreground">
+            <p className="mt-3 text-sm text-muted-foreground">
               No seat allocated.
             </p>
           )}
         </Card>
 
         <Card>
-          <p className="text-sm font-medium">Current project</p>
+          <p className="label-cap">Current project</p>
           {project ? (
-            <div className="mt-2 space-y-1 text-sm">
+            <div className="mt-3 space-y-2 text-sm">
               <Link
                 href={`/projects/${project.id}`}
-                className="font-medium text-primary hover:underline"
+                className="text-base font-semibold text-primary hover:underline"
               >
                 {project.name}
               </Link>
               <p className="text-xs text-muted-foreground">
-                Client: {project.client} · Code: {project.code}
+                <span className="font-mono">{project.code}</span> ·{" "}
+                {project.client}
               </p>
-              <Badge status={project.status} />
+              <div>
+                <Badge status={project.status} />
+              </div>
             </div>
           ) : (
-            <p className="mt-2 text-sm text-muted-foreground">
+            <p className="mt-3 text-sm text-muted-foreground">
               No project assigned.
             </p>
           )}
@@ -115,13 +141,22 @@ export default function EmployeeDetailPage() {
   );
 }
 
-function Field({ label, value }: { label: string; value: React.ReactNode }) {
+function InfoRow({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value: React.ReactNode;
+}) {
   return (
-    <div>
-      <p className="text-xs uppercase tracking-wide text-muted-foreground">
-        {label}
-      </p>
-      <p className="mt-0.5">{value}</p>
+    <div className="flex items-start gap-3">
+      <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+      <div className="min-w-0">
+        <p className="label-cap">{label}</p>
+        <p className="mt-0.5 truncate">{value}</p>
+      </div>
     </div>
   );
 }

@@ -1,14 +1,21 @@
 "use client";
 
+import { ChevronRight, Plus, Search } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
-import { Badge, Card, TableShell } from "@/components/ui";
+import { Field, Input, Select } from "@/components/input";
+import { Badge, Card, PageHeader, TableShell } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import type { Employee, EmployeeStatus, Page } from "@/lib/types";
 
-const STATUS_OPTIONS: (EmployeeStatus | "")[] = ["", "active", "on_leave", "exited"];
+const STATUS_OPTIONS: (EmployeeStatus | "")[] = [
+  "",
+  "active",
+  "on_leave",
+  "exited",
+];
 
 export default function EmployeesPage() {
   const { hasRole } = useAuth();
@@ -47,40 +54,42 @@ export default function EmployeesPage() {
   const currentPage = Math.floor(offset / limit) + 1;
 
   return (
-    <div className="space-y-4">
-      <Card>
-        <div className="mb-3 flex items-center justify-between">
-          <p className="text-sm font-medium">Filters</p>
-          {canAdd && (
+    <div className="space-y-6">
+      <PageHeader
+        title="Employees"
+        description="Search and browse the full workforce."
+        actions={
+          canAdd && (
             <Link
               href="/new-joiner"
-              className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:opacity-90"
+              className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground shadow-sm transition hover:opacity-90"
             >
-              + New joiner
+              <Plus className="h-4 w-4" />
+              New joiner
             </Link>
-          )}
-        </div>
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
-          <div className="md:col-span-2">
-            <label htmlFor="emp-q" className="text-xs font-medium">
-              Search
-            </label>
-            <input
-              id="emp-q"
-              value={q}
-              onChange={(e) => {
-                setQ(e.target.value);
-                setOffset(0);
-              }}
-              placeholder="name, email, emp_code"
-              className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm"
-            />
-          </div>
-          <div>
-            <label htmlFor="emp-dept" className="text-xs font-medium">
-              Department
-            </label>
-            <input
+          )
+        }
+      />
+
+      <Card>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+          <Field label="Search" htmlFor="emp-q" className="md:col-span-2">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="emp-q"
+                value={q}
+                onChange={(e) => {
+                  setQ(e.target.value);
+                  setOffset(0);
+                }}
+                placeholder="name, email, or employee code…"
+                className="pl-8"
+              />
+            </div>
+          </Field>
+          <Field label="Department" htmlFor="emp-dept">
+            <Input
               id="emp-dept"
               value={department}
               onChange={(e) => {
@@ -88,85 +97,98 @@ export default function EmployeesPage() {
                 setOffset(0);
               }}
               placeholder="Engineering"
-              className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm"
             />
-          </div>
-          <div>
-            <label htmlFor="emp-status" className="text-xs font-medium">
-              Status
-            </label>
-            <select
+          </Field>
+          <Field label="Status" htmlFor="emp-status">
+            <Select
               id="emp-status"
               value={status}
               onChange={(e) => {
                 setStatus(e.target.value as EmployeeStatus | "");
                 setOffset(0);
               }}
-              className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm"
             >
               {STATUS_OPTIONS.map((s) => (
                 <option key={s} value={s}>
-                  {s || "any"}
+                  {s || "Any status"}
                 </option>
               ))}
-            </select>
-          </div>
+            </Select>
+          </Field>
         </div>
       </Card>
 
       {err && (
-        <p className="rounded-md bg-red-50 p-3 text-sm text-red-800 dark:bg-red-950/40 dark:text-red-200">
+        <p className="rounded-md border border-danger/40 bg-danger/10 p-3 text-sm text-danger">
           {err}
         </p>
       )}
 
       <TableShell>
-        <thead className="bg-muted/50 text-left text-xs uppercase text-muted-foreground">
-          <tr>
-            <th className="px-3 py-2">Emp Code</th>
-            <th className="px-3 py-2">Name</th>
-            <th className="px-3 py-2">Department</th>
-            <th className="px-3 py-2">Designation</th>
-            <th className="px-3 py-2">Status</th>
-            <th className="px-3 py-2">Seat</th>
-            <th className="px-3 py-2"></th>
+        <thead>
+          <tr className="border-b border-border bg-muted/40">
+            <Th>Code</Th>
+            <Th>Name</Th>
+            <Th>Department</Th>
+            <Th>Designation</Th>
+            <Th>Status</Th>
+            <Th>Seat</Th>
+            <Th className="text-right pr-4">
+              <span className="sr-only">Actions</span>
+            </Th>
           </tr>
         </thead>
         <tbody>
           {loading && (
             <tr>
-              <td colSpan={7} className="px-3 py-6 text-center text-muted-foreground">
+              <td
+                colSpan={7}
+                className="px-4 py-10 text-center text-sm text-muted-foreground"
+              >
                 Loading…
               </td>
             </tr>
           )}
           {!loading && data && data.items.length === 0 && (
             <tr>
-              <td colSpan={7} className="px-3 py-6 text-center text-muted-foreground">
+              <td
+                colSpan={7}
+                className="px-4 py-10 text-center text-sm text-muted-foreground"
+              >
                 No employees match those filters.
               </td>
             </tr>
           )}
           {data?.items.map((e) => (
-            <tr key={e.id} className="border-t hover:bg-muted/30">
-              <td className="px-3 py-2 font-mono text-xs">{e.emp_code}</td>
-              <td className="px-3 py-2">
+            <tr
+              key={e.id}
+              className="border-b border-border/60 last:border-0 transition-colors hover:bg-accent/40"
+            >
+              <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">
+                {e.emp_code}
+              </td>
+              <td className="px-4 py-2.5 font-medium">
                 {e.first_name} {e.last_name}
               </td>
-              <td className="px-3 py-2">{e.department}</td>
-              <td className="px-3 py-2 text-muted-foreground">{e.designation}</td>
-              <td className="px-3 py-2">
+              <td className="px-4 py-2.5 text-muted-foreground">
+                {e.department}
+              </td>
+              <td className="px-4 py-2.5 text-muted-foreground">
+                {e.designation}
+              </td>
+              <td className="px-4 py-2.5">
                 <Badge status={e.status} />
               </td>
-              <td className="px-3 py-2 text-xs text-muted-foreground">
+              <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">
                 {e.current_seat_id ?? "—"}
               </td>
-              <td className="px-3 py-2 text-right">
+              <td className="pr-4 py-2.5 text-right">
                 <Link
                   href={`/employees/${e.id}`}
-                  className="text-xs font-medium text-primary hover:underline"
+                  className="inline-flex items-center gap-0.5 text-xs font-medium text-primary hover:underline"
                 >
                   View
+                  <ChevronRight className="h-3.5 w-3.5" />
                 </Link>
               </td>
             </tr>
@@ -180,26 +202,66 @@ export default function EmployeesPage() {
             {data.total.toLocaleString()} employees · page {currentPage} of{" "}
             {totalPages}
           </p>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              disabled={offset === 0}
-              onClick={() => setOffset(Math.max(0, offset - limit))}
-              className="rounded-md border px-3 py-1 disabled:opacity-50"
-            >
-              Previous
-            </button>
-            <button
-              type="button"
-              disabled={offset + limit >= data.total}
-              onClick={() => setOffset(offset + limit)}
-              className="rounded-md border px-3 py-1 disabled:opacity-50"
-            >
-              Next
-            </button>
-          </div>
+          <Pagination
+            offset={offset}
+            limit={limit}
+            total={data.total}
+            onChange={setOffset}
+          />
         </div>
       )}
+    </div>
+  );
+}
+
+function Th({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <th
+      className={
+        "px-4 py-2.5 text-left text-[11px] font-medium uppercase tracking-wider text-muted-foreground " +
+        (className ?? "")
+      }
+    >
+      {children}
+    </th>
+  );
+}
+
+function Pagination({
+  offset,
+  limit,
+  total,
+  onChange,
+}: {
+  offset: number;
+  limit: number;
+  total: number;
+  onChange: (offset: number) => void;
+}) {
+  return (
+    <div className="flex gap-1.5">
+      <button
+        type="button"
+        disabled={offset === 0}
+        onClick={() => onChange(Math.max(0, offset - limit))}
+        className="rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium transition hover:bg-accent disabled:opacity-40"
+      >
+        Previous
+      </button>
+      <button
+        type="button"
+        disabled={offset + limit >= total}
+        onClick={() => onChange(offset + limit)}
+        className="rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium transition hover:bg-accent disabled:opacity-40"
+      >
+        Next
+      </button>
     </div>
   );
 }

@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
-import { Badge, Card } from "@/components/ui";
+import { Field, Select } from "@/components/input";
+import { Badge, Card, PageHeader } from "@/components/ui";
 import { apiFetch } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import type {
@@ -26,14 +27,21 @@ const STATUS_OPTIONS: (SeatStatusValue | "")[] = [
 
 const SEAT_CLS: Record<SeatStatusValue, string> = {
   available:
-    "bg-green-200 text-green-950 hover:bg-green-300 dark:bg-green-700 dark:text-white dark:hover:bg-green-600",
+    "bg-emerald-500/15 text-emerald-700 ring-1 ring-emerald-500/30 hover:bg-emerald-500/25 dark:text-emerald-300",
   occupied:
-    "bg-blue-200 text-blue-950 hover:bg-blue-300 dark:bg-blue-700 dark:text-white dark:hover:bg-blue-600",
+    "bg-indigo-500/15 text-indigo-700 ring-1 ring-indigo-500/30 hover:bg-indigo-500/25 dark:text-indigo-300",
   reserved:
-    "bg-yellow-200 text-yellow-950 hover:bg-yellow-300 dark:bg-yellow-600 dark:text-white dark:hover:bg-yellow-500",
+    "bg-amber-500/15 text-amber-700 ring-1 ring-amber-500/30 hover:bg-amber-500/25 dark:text-amber-300",
   blocked:
-    "bg-red-200 text-red-950 hover:bg-red-300 dark:bg-red-700 dark:text-white dark:hover:bg-red-600",
+    "bg-rose-500/15 text-rose-700 ring-1 ring-rose-500/30 hover:bg-rose-500/25 dark:text-rose-300",
 };
+
+const LEGEND: { status: SeatStatusValue; label: string; dot: string }[] = [
+  { status: "available", label: "Available", dot: "bg-emerald-500" },
+  { status: "occupied", label: "Occupied", dot: "bg-indigo-500" },
+  { status: "reserved", label: "Reserved", dot: "bg-amber-500" },
+  { status: "blocked", label: "Blocked", dot: "bg-rose-500" },
+];
 
 export default function SeatsPage() {
   const [building, setBuilding] = useState("B1");
@@ -77,92 +85,95 @@ export default function SeatsPage() {
   }, [data]);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      <PageHeader
+        title="Seats"
+        description="Interactive floor plan. Click any seat to see its details."
+      />
+
       <Card>
         <div className="flex flex-wrap items-end gap-4">
-          <div>
-            <label htmlFor="seat-building" className="text-xs font-medium">
-              Building
-            </label>
-            <select
+          <Field label="Building" htmlFor="seat-building">
+            <Select
               id="seat-building"
               value={building}
               onChange={(e) => setBuilding(e.target.value)}
-              className="ml-2 rounded-md border bg-background px-3 py-2 text-sm"
+              className="w-28"
             >
               {BUILDINGS.map((b) => (
                 <option key={b} value={b}>
                   {b}
                 </option>
               ))}
-            </select>
-          </div>
-          <div>
-            <label htmlFor="seat-floor" className="text-xs font-medium">
-              Floor
-            </label>
-            <select
+            </Select>
+          </Field>
+          <Field label="Floor" htmlFor="seat-floor">
+            <Select
               id="seat-floor"
               value={floor}
               onChange={(e) => setFloor(Number(e.target.value))}
-              className="ml-2 rounded-md border bg-background px-3 py-2 text-sm"
+              className="w-28"
             >
               {FLOORS.map((f) => (
                 <option key={f} value={f}>
                   F{f}
                 </option>
               ))}
-            </select>
-          </div>
-          <div>
-            <label htmlFor="seat-status" className="text-xs font-medium">
-              Status
-            </label>
-            <select
+            </Select>
+          </Field>
+          <Field label="Status" htmlFor="seat-status">
+            <Select
               id="seat-status"
               value={status}
               onChange={(e) => setStatus(e.target.value as SeatStatusValue | "")}
-              className="ml-2 rounded-md border bg-background px-3 py-2 text-sm"
+              className="w-36"
             >
               {STATUS_OPTIONS.map((s) => (
                 <option key={s} value={s}>
-                  {s || "any"}
+                  {s || "Any status"}
                 </option>
               ))}
-            </select>
-          </div>
+            </Select>
+          </Field>
 
-          <div className="ml-auto flex gap-3 text-xs">
-            <LegendDot label="available" cls="bg-green-200 dark:bg-green-700" />
-            <LegendDot label="occupied" cls="bg-blue-200 dark:bg-blue-700" />
-            <LegendDot label="reserved" cls="bg-yellow-200 dark:bg-yellow-600" />
-            <LegendDot label="blocked" cls="bg-red-200 dark:bg-red-700" />
+          <div className="ml-auto flex flex-wrap items-center gap-3 text-xs">
+            {LEGEND.map((l) => (
+              <span
+                key={l.status}
+                className="inline-flex items-center gap-1.5 text-muted-foreground"
+              >
+                <span className={cn("h-2.5 w-2.5 rounded-full", l.dot)} />
+                {l.label}
+              </span>
+            ))}
           </div>
         </div>
       </Card>
 
       {err && (
-        <p className="rounded-md bg-red-50 p-3 text-sm text-red-800 dark:bg-red-950/40 dark:text-red-200">{err}</p>
+        <p className="rounded-md border border-danger/40 bg-danger/10 p-3 text-sm text-danger">
+          {err}
+        </p>
       )}
 
       <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
         <Card>
-          <div className="mb-3 flex items-center justify-between">
-            <p className="text-sm font-medium">
-              {building} · Floor {floor}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {loading ? "Loading…" : `${data.length} seats`}
-            </p>
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium">
+                {building} · Floor {floor}
+              </p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {loading ? "Loading…" : `${data.length} seats`}
+              </p>
+            </div>
           </div>
-          <div className="space-y-4">
+          <div className="space-y-5">
             {Object.keys(byZone)
               .sort()
               .map((zone) => (
                 <div key={zone}>
-                  <p className="mb-2 text-xs font-medium text-muted-foreground">
-                    Zone {zone}
-                  </p>
+                  <p className="label-cap mb-2">Zone {zone}</p>
                   <div className="flex flex-wrap gap-1.5">
                     {byZone[zone].map((seat) => (
                       <button
@@ -171,10 +182,10 @@ export default function SeatsPage() {
                         onClick={() => setSelected(seat)}
                         title={`${seat.seat_code} — ${seat.status}`}
                         className={cn(
-                          "h-7 w-8 rounded text-[10px] font-mono",
+                          "flex h-8 w-9 items-center justify-center rounded-md text-[10px] font-mono font-medium transition",
                           SEAT_CLS[seat.status],
                           selected?.id === seat.id
-                            ? "ring-2 ring-primary ring-offset-1"
+                            ? "ring-2 ring-primary ring-offset-2 ring-offset-background"
                             : "",
                         )}
                       >
@@ -185,7 +196,7 @@ export default function SeatsPage() {
                 </div>
               ))}
             {!loading && data.length === 0 && (
-              <p className="py-8 text-center text-sm text-muted-foreground">
+              <p className="py-12 text-center text-sm text-muted-foreground">
                 No seats match those filters.
               </p>
             )}
@@ -193,24 +204,15 @@ export default function SeatsPage() {
         </Card>
 
         <Card>
-          <p className="text-sm font-medium">Selection</p>
+          <p className="label-cap">Selection</p>
           {selected ? <SelectionPanel seat={selected} /> : (
-            <p className="mt-2 text-sm text-muted-foreground">
+            <p className="mt-3 text-sm text-muted-foreground">
               Click a seat to inspect it.
             </p>
           )}
         </Card>
       </div>
     </div>
-  );
-}
-
-function LegendDot({ label, cls }: { label: string; cls: string }) {
-  return (
-    <span className="inline-flex items-center gap-1.5 text-muted-foreground">
-      <span className={cn("h-3 w-3 rounded", cls)} />
-      {label}
-    </span>
   );
 }
 
@@ -221,7 +223,6 @@ function SelectionPanel({ seat }: { seat: Seat }) {
   const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
-    // Reset for the new seat.
     setOccupant(null);
     setAllocatedAt(null);
     setNotFound(false);
@@ -259,29 +260,31 @@ function SelectionPanel({ seat }: { seat: Seat }) {
   }, [seat.id, seat.status]);
 
   return (
-    <div className="mt-2 space-y-2 text-sm">
-      <p className="font-mono">{seat.seat_code}</p>
-      <p className="text-xs text-muted-foreground">
-        {seat.building} · Floor {seat.floor} · Zone {seat.zone}
-      </p>
+    <div className="mt-3 space-y-3 text-sm">
+      <div>
+        <p className="font-mono text-base font-semibold tracking-tight">
+          {seat.seat_code}
+        </p>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          {seat.building} · Floor {seat.floor} · Zone {seat.zone}
+        </p>
+      </div>
       <Badge status={seat.status} />
       {seat.notes && (
-        <p className="mt-2 text-xs text-muted-foreground">{seat.notes}</p>
+        <p className="text-xs text-muted-foreground">{seat.notes}</p>
       )}
 
       {seat.status === "occupied" && (
-        <div className="mt-3 border-t pt-3">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">
-            Occupant
-          </p>
+        <div className="divider pt-3">
+          <p className="label-cap">Occupant</p>
           {loading && (
-            <p className="mt-1 text-xs text-muted-foreground">Looking up…</p>
+            <p className="mt-2 text-xs text-muted-foreground">Looking up…</p>
           )}
           {!loading && occupant && (
-            <div className="mt-1 space-y-1">
+            <div className="mt-2 space-y-1">
               <Link
                 href={`/employees/${occupant.id}`}
-                className="font-medium text-primary hover:underline"
+                className="text-sm font-semibold text-primary hover:underline"
               >
                 {occupant.first_name} {occupant.last_name}
               </Link>
@@ -292,14 +295,14 @@ function SelectionPanel({ seat }: { seat: Seat }) {
                 {occupant.designation} · {occupant.department}
               </p>
               {allocatedAt && (
-                <p className="text-xs text-muted-foreground">
-                  Sitting here since {new Date(allocatedAt).toLocaleDateString()}
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Since {new Date(allocatedAt).toLocaleDateString()}
                 </p>
               )}
             </div>
           )}
           {!loading && !occupant && notFound && (
-            <p className="mt-1 text-xs text-muted-foreground">
+            <p className="mt-2 text-xs text-muted-foreground">
               No active allocation found for this seat.
             </p>
           )}
