@@ -137,7 +137,31 @@ Round-tripped `hash_password` / `verify_password` and `create_access_token` / `d
 
 ## Phase 3 — Business Logic
 
-_Entries will be appended here as seat allocation, release, transfer, and new-joiner suggestion logic are added._
+### 11. Allocation service (allocate / release / transfer) — 2026-07-08
+**Tool:** Claude
+**Phase:** Phase 3
+**Prompt (summary):** "Build the seat allocation service that atomically moves three tables: seats.status, employees.current_seat_id, and appends a seat_allocations row. Wrap it in HR/Admin-guarded endpoints for allocate, release, and transfer."
+**Output (summary):** `app/services/allocation.py` with `allocate()`, `release()`, `transfer()`. Each function flushes but does not commit — the calling endpoint commits so the whole mutation lands in one transaction. Endpoints in `app/api/v1/endpoints/allocations.py` cover `GET /allocations` (with active_only, employee_id, seat_id filters), `GET /allocations/{id}`, `POST /allocations`, `POST /allocations/{id}/release`, and `POST /allocations/transfer`.
+**Manual fixes:** Two invariants added defensively:
+- allocate refuses non-AVAILABLE seats and refuses employees who already occupy a seat (409). Enforces "release or transfer" as the only path off an existing seat.
+- transfer reuses release + allocate rather than editing rows in place, so history is complete and audit trail shows both events plus a `TRANSFER` marker.
+**Validation:** Smoke test exercised: allocate → seat OCCUPIED, employee.current_seat_id set → double-allocate rejected (409) → transfer → old seat AVAILABLE, new seat OCCUPIED → release → employee.current_seat_id cleared. All state changes verified via `GET /seats/{id}` and `GET /employees/{id}` after each step.
+
+### 12. New-joiner seat suggestion — 2026-07-08
+**Tool:** Claude
+**Phase:** Phase 3
+**Prompt (summary):** "Suggest N vacant seats for a new joiner, ranked by proximity to their future team (department or project). Fall back to same floor, then anywhere."
+**Output (summary):** `app/services/new_joiner.py` with `suggest_seats()`, plus `POST /new-joiner/suggest`, `GET /new-joiner/suggest` (query-param variant for Swagger tinkering), and `POST /new-joiner/allocate` which delegates to the standard allocation service.
+**Manual fixes:** Chose a 3-tier fallback: same (building, floor, zone) → same (building, floor) → any AVAILABLE. Ranks hotspots by how many teammates already sit there, so a densely-populated zone wins over a sparse one. Ties broken deterministically by `seat_number` so the same call returns the same suggestion — makes the UI stable.
+**Validation:** Smoke test asserts the endpoint returns a list (may be empty until Phase 4 seed populates teammates). Manual Swagger tests will follow after seed.
+
+### 13. Dashboard aggregate endpoints — 2026-07-08
+**Tool:** Claude
+**Phase:** Phase 3
+**Prompt (summary):** "Add dashboard aggregates the frontend will call: overall seat occupancy, by-floor breakdown, project utilization (active members vs required seats), and a landing-page overview."
+**Output (summary):** `app/api/v1/endpoints/dashboard.py` with `GET /dashboard/occupancy`, `/occupancy/by-floor`, `/projects/utilization`, and `/overview`. Response schemas in `app/schemas/dashboard.py`. Overview bundles the occupancy summary with active employee count, 30-day joiner count, active project count, and top 5 departments by headcount.
+**Manual fixes:** Utilization query joins ProjectAssignment via a subquery filtered to `end_date IS NULL OR end_date >= today` so historical assignments don't inflate the count. Used `func.count(func.distinct(employee_id))` so an employee counted once even with multiple concurrent role rows on the same project.
+**Validation:** Smoke test hits all 4 endpoints and checks response shape. Values will be more meaningful once Phase 4 seed lands 5k employees; today the tables are near-empty so numbers are small but non-zero (4 users, 0 seats).
 
 ---
 

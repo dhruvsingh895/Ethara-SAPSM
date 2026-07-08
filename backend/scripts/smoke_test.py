@@ -166,6 +166,106 @@ def main() -> None:
         )
         check(r.status_code == 403, "employee cannot delete project", r)
 
+        # ---------- Phase 3: allocation flows ----------
+        # Need a second seat for the transfer test.
+        seat2_payload = {
+            **seat_payload,
+            "seat_code": f"B1-F1-Z1-T{run_id}",
+            "seat_number": int(run_id) + 1,
+        }
+        r = c.post(f"{BASE}/seats", json=seat2_payload, headers=h)
+        check(r.status_code == 201, "create second seat for transfer", r)
+        seat2_id = r.json()["id"]
+
+        # allocate
+        r = c.post(
+            f"{BASE}/allocations",
+            json={"seat_id": seat_id, "employee_id": emp_id, "note": "smoke"},
+            headers=h,
+        )
+        check(r.status_code == 201, "allocate seat", r)
+        alloc_id = r.json()["id"]
+
+        # seat should now be OCCUPIED
+        r = c.get(f"{BASE}/seats/{seat_id}", headers=h)
+        check(
+            r.status_code == 200 and r.json()["status"] == "occupied",
+            "seat is OCCUPIED after allocate",
+            r,
+        )
+
+        # employee.current_seat_id should be set
+        r = c.get(f"{BASE}/employees/{emp_id}", headers=h)
+        check(
+            r.status_code == 200 and r.json()["current_seat_id"] == seat_id,
+            "employee.current_seat_id set",
+            r,
+        )
+
+        # double-allocation of same employee is blocked
+        r = c.post(
+            f"{BASE}/allocations",
+            json={"seat_id": seat2_id, "employee_id": emp_id},
+            headers=h,
+        )
+        check(r.status_code == 409, "cannot double-allocate employee", r)
+
+        # transfer to seat2
+        r = c.post(
+            f"{BASE}/allocations/transfer",
+            json={"employee_id": emp_id, "new_seat_id": seat2_id, "note": "transfer"},
+            headers=h,
+        )
+        check(r.status_code == 200, "transfer to new seat", r)
+        new_alloc_id = r.json()["id"]
+
+        r = c.get(f"{BASE}/seats/{seat_id}", headers=h)
+        check(r.json()["status"] == "available", "old seat back to AVAILABLE", r)
+        r = c.get(f"{BASE}/seats/{seat2_id}", headers=h)
+        check(r.json()["status"] == "occupied", "new seat is OCCUPIED", r)
+
+        # release the current allocation
+        r = c.post(f"{BASE}/allocations/{new_alloc_id}/release", json={}, headers=h)
+        check(r.status_code == 200 and r.json()["released_at"] is not None,
+              "release allocation", r)
+
+        r = c.get(f"{BASE}/employees/{emp_id}", headers=h)
+        check(r.json()["current_seat_id"] is None,
+              "employee.current_seat_id cleared after release", r)
+
+        # ---------- Phase 3: new joiner suggestion ----------
+        r = c.post(
+            f"{BASE}/new-joiner/suggest",
+            json={"department": "Platform", "limit": 5},
+            headers=h,
+        )
+        check(r.status_code == 200 and isinstance(r.json(), list),
+              "new-joiner suggest returns a list", r)
+
+        # ---------- Phase 3: dashboard ----------
+        r = c.get(f"{BASE}/dashboard/occupancy", headers=h)
+        check(r.status_code == 200 and "occupancy_pct" in r.json(),
+              "dashboard occupancy", r)
+
+        r = c.get(f"{BASE}/dashboard/occupancy/by-floor", headers=h)
+        check(r.status_code == 200 and isinstance(r.json(), list),
+              "dashboard occupancy by floor", r)
+
+        r = c.get(f"{BASE}/dashboard/projects/utilization", headers=h)
+        check(r.status_code == 200 and isinstance(r.json(), list),
+              "dashboard project utilization", r)
+
+        r = c.get(f"{BASE}/dashboard/overview", headers=h)
+        j = r.json()
+        check(
+            r.status_code == 200
+            and "occupancy" in j
+            and "active_employees" in j
+            and "top_departments" in j,
+            "dashboard overview shape",
+            r,
+        )
+
         # --- cleanup ---
         r = c.delete(
             f"{BASE}/projects/{proj_id}/assignments/{assign_id}", headers=h
@@ -177,8 +277,10 @@ def main() -> None:
         check(r.status_code == 200, "delete employee", r)
         r = c.delete(f"{BASE}/seats/{seat_id}", headers=h)
         check(r.status_code == 200, "delete seat", r)
+        r = c.delete(f"{BASE}/seats/{seat2_id}", headers=h)
+        check(r.status_code == 200, "delete second seat", r)
 
-        print("\nAll Phase 2 smoke checks passed.")
+        print("\nAll smoke checks passed (Phase 1-3).")
 
 
 if __name__ == "__main__":
