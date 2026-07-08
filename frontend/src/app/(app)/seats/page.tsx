@@ -411,7 +411,8 @@ function AdminSeatControls({
 
       {isOccupied && !editing && (
         <p className="mt-2 rounded-md border border-warning/40 bg-warning/10 px-2 py-1.5 text-[11px] text-warning">
-          Release the active allocation before changing this seat's status.
+          Release the active allocation before changing this seat&apos;s
+          status.
         </p>
       )}
 
