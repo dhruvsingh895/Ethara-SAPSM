@@ -117,7 +117,21 @@ Round-tripped `hash_password` / `verify_password` and `create_access_token` / `d
 
 ## Phase 2 — Core CRUD APIs
 
-_Entries will be appended here._
+### 9. Shared pagination and audit helpers — 2026-07-08
+**Tool:** Claude
+**Phase:** Phase 2
+**Prompt (summary):** "Add a shared `Page[T]` response schema, `PageParams` FastAPI dependency, and an `audit.record()` helper so every mutation endpoint writes one audit row without repeating the same code."
+**Output (summary):** `app/schemas/common.py` (`Page`, `PageParams`, `MessageResponse`) and `app/services/audit.py` (single `record()` coroutine that appends to `audit_log`).
+**Manual fixes:** Kept `audit.record()` non-committing — the caller commits after all changes so audit rows land in the same transaction as the mutation they describe. Caps `limit` at 200 in `PageParams` to keep responses small.
+**Validation:** Both modules used by every subsequent endpoint in Phase 2 and exercised by the smoke test.
+
+### 10. Employees, seats, projects, and assignments CRUD — 2026-07-08
+**Tool:** Claude
+**Phase:** Phase 2
+**Prompt (summary):** "Build CRUD endpoints for employees, seats, projects, and project assignments. Query-param filters, offset pagination, ILIKE search on obvious columns, role guards per resource, and audit-log writes on every mutation."
+**Output (summary):** Four endpoint modules under `app/api/v1/endpoints/` (`employees`, `seats`, `projects` includes `/roster` + nested `/assignments`) and matching schemas under `app/schemas/`. 24 total endpoints registered; role guards: HR/Admin for employees, Admin for seats/projects, PM/Admin for assignments. Seat delete refuses OCCUPIED seats. Available-seats endpoint sorts by building/floor/zone/seat_number for stable UI listing.
+**Manual fixes:** For seat/project mutations, chose `PATCH` (partial update via `model_dump(exclude_unset=True)`) rather than `PUT` — safer against clients that don't send all fields. Added a URL-vs-body project_id sanity check on assignment creation (400 if mismatched). Kept `active_only=True` as the default on roster to hide expired rows.
+**Validation:** Wrote `backend/scripts/smoke_test.py` — creates seat/project/employee/assignment, verifies filters/search/roster, patches a field, checks that a non-admin cannot delete a project, then cleans up. Ran against live Neon: 17/17 checks passed.
 
 ---
 
