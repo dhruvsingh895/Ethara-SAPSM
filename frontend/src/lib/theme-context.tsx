@@ -9,80 +9,55 @@ import {
   useState,
 } from "react";
 
-export type Theme = "light" | "dark" | "system";
+export type Theme = "light" | "dark";
 
 const STORAGE_KEY = "ethara.theme";
 
 interface ThemeContextValue {
   theme: Theme;
-  resolved: "light" | "dark";
   setTheme: (t: Theme) => void;
-  cycle: () => void;
+  toggle: () => void;
 }
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 function readSaved(): Theme {
-  if (typeof window === "undefined") return "system";
+  if (typeof window === "undefined") return "dark";
   const v = window.localStorage.getItem(STORAGE_KEY);
-  return v === "light" || v === "dark" || v === "system" ? v : "system";
+  return v === "light" ? "light" : "dark";
 }
 
-function systemPrefersDark(): boolean {
-  if (typeof window === "undefined") return false;
-  return window.matchMedia("(prefers-color-scheme: dark)").matches;
-}
-
-function applyClass(resolved: "light" | "dark") {
+function applyClass(theme: Theme) {
   const root = document.documentElement;
-  if (resolved === "dark") root.classList.add("dark");
+  if (theme === "dark") root.classList.add("dark");
   else root.classList.remove("dark");
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>("system");
-  const [resolved, setResolved] = useState<"light" | "dark">("light");
+  const [theme, setThemeState] = useState<Theme>("dark");
 
-  // Load saved theme after mount.
+  // Load saved theme after mount, defaulting to dark for anything unset.
   useEffect(() => {
     const t = readSaved();
     setThemeState(t);
+    applyClass(t);
   }, []);
-
-  // Recompute resolved theme whenever the setting or the system pref changes.
-  useEffect(() => {
-    const r = theme === "system" ? (systemPrefersDark() ? "dark" : "light") : theme;
-    setResolved(r);
-    applyClass(r);
-  }, [theme]);
-
-  // Listen for OS-level pref changes when in "system" mode.
-  useEffect(() => {
-    if (theme !== "system") return;
-    const mql = window.matchMedia("(prefers-color-scheme: dark)");
-    const handler = (e: MediaQueryListEvent) => {
-      const r = e.matches ? "dark" : "light";
-      setResolved(r);
-      applyClass(r);
-    };
-    mql.addEventListener("change", handler);
-    return () => mql.removeEventListener("change", handler);
-  }, [theme]);
 
   const setTheme = useCallback((t: Theme) => {
     setThemeState(t);
+    applyClass(t);
     if (typeof window !== "undefined") {
       window.localStorage.setItem(STORAGE_KEY, t);
     }
   }, []);
 
-  const cycle = useCallback(() => {
-    setTheme(theme === "light" ? "dark" : theme === "dark" ? "system" : "light");
+  const toggle = useCallback(() => {
+    setTheme(theme === "light" ? "dark" : "light");
   }, [theme, setTheme]);
 
   const value = useMemo(
-    () => ({ theme, resolved, setTheme, cycle }),
-    [theme, resolved, setTheme, cycle],
+    () => ({ theme, setTheme, toggle }),
+    [theme, setTheme, toggle],
   );
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;

@@ -12,13 +12,12 @@ export const metadata: Metadata = {
 };
 
 // Runs before React hydrates so the correct theme class is on <html>.
-// Prevents the light-mode flash for users who prefer dark.
+// Dark is the default; only opt-in 'light' is respected.
 const themeBootstrap = `
 (function(){try{
   var t=localStorage.getItem('ethara.theme');
-  var d=t==='dark'||((!t||t==='system')&&window.matchMedia('(prefers-color-scheme: dark)').matches);
-  if(d)document.documentElement.classList.add('dark');
-}catch(e){}})();
+  if(t!=='light')document.documentElement.classList.add('dark');
+}catch(e){document.documentElement.classList.add('dark');}})();
 `;
 
 export default function RootLayout({
