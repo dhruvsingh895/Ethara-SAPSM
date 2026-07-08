@@ -1,16 +1,31 @@
 "use client";
 
-import { ArrowLeft, Building2, Briefcase, Mail, Phone, User } from "lucide-react";
+import {
+  ArrowLeft,
+  Briefcase,
+  Building2,
+  Mail,
+  Pencil,
+  Phone,
+  User,
+} from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { Select } from "@/components/input";
 import { Badge, Card } from "@/components/ui";
-import { apiFetch } from "@/lib/api";
-import type { Employee, Project, Seat } from "@/lib/types";
+import { ApiError, apiFetch } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
+import type { Employee, EmployeeStatus, Project, Seat } from "@/lib/types";
+
+const STATUS_OPTIONS: EmployeeStatus[] = ["active", "on_leave", "exited"];
 
 export default function EmployeeDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const { hasRole } = useAuth();
+  const canEdit = hasRole("admin", "hr");
+
   const [emp, setEmp] = useState<Employee | null>(null);
   const [seat, setSeat] = useState<Seat | null>(null);
   const [project, setProject] = useState<Project | null>(null);
@@ -43,7 +58,8 @@ export default function EmployeeDetailPage() {
   if (!emp)
     return <p className="text-sm text-muted-foreground">Loading…</p>;
 
-  const initials = `${emp.first_name[0] ?? ""}${emp.last_name[0] ?? ""}`.toUpperCase();
+  const initials =
+    `${emp.first_name[0] ?? ""}${emp.last_name[0] ?? ""}`.toUpperCase();
 
   return (
     <div className="space-y-6">
@@ -62,11 +78,15 @@ export default function EmployeeDetailPage() {
             <span className="text-lg font-semibold">{initials}</span>
           </div>
           <div className="flex-1">
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-2xl font-semibold tracking-tight">
                 {emp.first_name} {emp.last_name}
               </h1>
-              <Badge status={emp.status} />
+              <StatusControl
+                employee={emp}
+                canEdit={canEdit}
+                onUpdated={(updated) => setEmp(updated)}
+              />
             </div>
             <p className="mt-1 text-sm text-muted-foreground">
               <span className="font-mono">{emp.emp_code}</span> ·{" "}
@@ -137,6 +157,112 @@ export default function EmployeeDetailPage() {
           )}
         </Card>
       </div>
+    </div>
+  );
+}
+
+function StatusControl({
+  employee,
+  canEdit,
+  onUpdated,
+}: {
+  employee: Employee;
+  canEdit: boolean;
+  onUpdated: (e: Employee) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [nextStatus, setNextStatus] = useState<EmployeeStatus>(employee.status);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function save() {
+    if (nextStatus === employee.status) {
+      setEditing(false);
+      return;
+    }
+    setErr(null);
+    setBusy(true);
+    try {
+      const patch: Record<string, unknown> = { status: nextStatus };
+      // When marking exited, also record today as the exit_date so the
+      // profile shows a real handoff timestamp instead of "—".
+      if (nextStatus === "exited" && !employee.exit_date) {
+        patch.exit_date = new Date().toISOString().slice(0, 10);
+      }
+      const updated = await apiFetch<Employee>(
+        `/api/v1/employees/${employee.id}`,
+        { method: "PATCH", json: patch },
+      );
+      onUpdated(updated);
+      setEditing(false);
+    } catch (e) {
+      setErr(e instanceof ApiError ? e.detail : String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!canEdit) {
+    return <Badge status={employee.status} />;
+  }
+
+  if (!editing) {
+    return (
+      <div className="flex items-center gap-2">
+        <Badge status={employee.status} />
+        <button
+          type="button"
+          onClick={() => {
+            setNextStatus(employee.status);
+            setErr(null);
+            setEditing(true);
+          }}
+          title="Change status"
+          aria-label="Change status"
+          className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-2 py-0.5 text-[11px] font-medium text-muted-foreground transition hover:bg-accent hover:text-foreground"
+        >
+          <Pencil className="h-3 w-3" />
+          Change
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <Select
+        value={nextStatus}
+        onChange={(e) => setNextStatus(e.target.value as EmployeeStatus)}
+        aria-label="New status"
+        className="h-7 w-32 py-0 text-xs"
+      >
+        {STATUS_OPTIONS.map((s) => (
+          <option key={s} value={s}>
+            {s.replace("_", " ")}
+          </option>
+        ))}
+      </Select>
+      <button
+        type="button"
+        onClick={save}
+        disabled={busy}
+        className="rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground transition hover:opacity-90 disabled:opacity-50"
+      >
+        {busy ? "Saving…" : "Save"}
+      </button>
+      <button
+        type="button"
+        onClick={() => setEditing(false)}
+        disabled={busy}
+        className="rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium transition hover:bg-accent disabled:opacity-50"
+      >
+        Cancel
+      </button>
+      {err && (
+        <p className="w-full rounded-md border border-danger/40 bg-danger/10 px-2 py-1 text-xs text-danger">
+          {err}
+        </p>
+      )}
     </div>
   );
 }
