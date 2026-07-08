@@ -59,8 +59,32 @@ All entries are ordered chronologically. Each entry follows the schema:
 **Phase:** Phase 0 setup
 **Prompt (summary):** "Set up base project files: .gitignore excluding .claude and secrets, README describing the app, AI_PROMPTS log, LICENSE."
 **Output (summary):** This file, [README.md](README.md), [.gitignore](.gitignore), and [LICENSE](LICENSE).
-**Manual fixes:** _to be filled in as edits are made_.
-**Validation:** `git status` will be checked to confirm `.env`, `.claude/`, `node_modules/`, `.venv/`, `__pycache__/`, and IDE folders are all ignored.
+**Manual fixes:** None yet — files are stable placeholders that will grow through later phases.
+**Validation:** `git status` confirmed `.env`, `.claude/`, `node_modules/`, `.venv/`, `__pycache__/`, and IDE folders are all ignored. `problem-statement.txt` intentionally left untracked (assessment brief, not a project artefact).
+
+### 4. FastAPI backend scaffold — 2026-07-08
+**Tool:** Claude
+**Phase:** Phase 0 setup
+**Prompt (summary):** "Scaffold a FastAPI backend with async SQLAlchemy, Alembic, config via pydantic-settings, health check endpoints, and a Dockerfile."
+**Output (summary):** `backend/` tree — `app/main.py` factory with CORS + versioned `/api/v1`, `app/core/config.py` typed settings, `app/db/{base,session}.py` async engine, `app/api/v1/endpoints/health.py` with `/health` and `/health/db`, Alembic env wired to `database_url_sync`, Dockerfile, `.env.example`, and a local `docker-compose.yml` for Postgres 16.
+**Manual fixes:** Chose `pool_pre_ping=True` + moderate pool sizes to survive Neon's idle-pause cold starts. Health check split into cheap `/health` (no DB) and explicit `/health/db` (SELECT 1) so uptime pings don't burn Neon compute-hours unnecessarily.
+**Validation:** AST-parsed every `.py` file under `backend/` to confirm zero syntax errors before committing. Full runtime validation happens once `pip install` runs and Phase 1 models are added.
+
+### 5. Next.js frontend scaffold — 2026-07-08
+**Tool:** Claude
+**Phase:** Phase 0 setup
+**Prompt (summary):** "Scaffold a Next.js 14 (App Router) + Tailwind + TypeScript frontend without running create-next-app so the initial commit is clean."
+**Output (summary):** `frontend/` tree — `package.json` with Next 14, React 18, Tailwind, Recharts, lucide-react; strict `tsconfig.json`; `tailwind.config.ts` with a dedicated seat-status colour palette (available/occupied/reserved/blocked) for the Phase 5 seat map; landing page + `/health` server-rendered page that hits the backend liveness probe; `apiUrl()` helper reading `NEXT_PUBLIC_API_URL`.
+**Manual fixes:** Skipped `create-next-app` because it is interactive and pulls a full `node_modules` — hand-scaffolded files instead so the repo stays lean and `npm install` populates deps on any machine. Pinned Next to 14.2.15 (App Router stable) rather than 15 to avoid churn during the assessment window.
+**Validation:** `package.json` parsed with `JSON.parse`. TypeScript/JSX will be fully validated once `npm install` runs (`npm run typecheck`).
+
+### 6. Deployment configs (Render + Vercel) — 2026-07-08
+**Tool:** Claude
+**Phase:** Phase 0 setup
+**Prompt (summary):** "Add render.yaml and vercel.json so deployment is reproducible from the repo, with secrets kept out of source."
+**Output (summary):** `render.yaml` provisioning the backend web service with health check path and build/start commands; `frontend/vercel.json` pinning framework preset and commands.
+**Manual fixes:** All sensitive env vars (`DATABASE_URL`, `AI_READER_DATABASE_URL`, `JWT_SECRET`, `GEMINI_API_KEY`, `CORS_ORIGINS`, `SEED_DEMO_PASSWORD`) marked `sync: false` in `render.yaml` so Render's dashboard prompts to set them per environment — they never live in the repo. Region set to `singapore` to keep near typical Neon regions.
+**Validation:** YAML/JSON parsed successfully. Live validation will happen when the first push triggers a Render preview and a Vercel import.
 
 ---
 
