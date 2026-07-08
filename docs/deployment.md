@@ -34,6 +34,19 @@ Detailed step-by-step deployment guide. Will be populated as each service is dep
 
 See [`neon_setup.md`](neon_setup.md).
 
+## Pre-deployment security checklist
+
+Before pushing to production, all secrets used during local development
+**must** be rotated. Local `.env` values are considered exposed.
+
+- [ ] **Neon** — reset the `neondb_owner` password (or drop and recreate the role). Update `DATABASE_URL` and `DATABASE_URL_SYNC` on Render.
+- [ ] **Neon `ai_reader`** — set a strong random password when creating the role (see [`neon_setup.md`](neon_setup.md)).
+- [ ] **Gemini** — revoke the local `GEMINI_API_KEY` at https://aistudio.google.com/app/apikey and issue a new one for production.
+- [ ] **JWT_SECRET** — generate a fresh 32-byte hex string (`openssl rand -hex 32`) for production. Do not reuse the local dev secret.
+- [ ] **SEED_DEMO_PASSWORD** — change from `demo1234` before public exposure, or disable seeded demo accounts entirely.
+- [ ] Confirm no `.env` file is present in the Docker image (check `.dockerignore`).
+- [ ] Confirm `CORS_ORIGINS` in Render lists only the Vercel domain, not `*`.
+
 ## Keeping free-tier services warm
 
 Neon compute pauses after 5 minutes of inactivity. To keep it warm during grading:
