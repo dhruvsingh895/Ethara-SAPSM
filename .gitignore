@@ -73,6 +73,7 @@ pnpm-debug.log*
 frontend/.next/
 frontend/out/
 frontend/build/
+frontend/tsconfig.tsbuildinfo
 
 # Coverage
 coverage/
