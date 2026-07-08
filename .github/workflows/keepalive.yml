@@ -1,0 +1,30 @@
+name: Keep Render backend warm
+
+# TEMPORARY: pings the free-tier Render backend so it doesn't spin down
+# during the assessment review window. Delete this workflow after the
+# review is over — Render's usage policy discourages persistent
+# artificial traffic beyond the review window.
+
+on:
+  schedule:
+    # Every 10 minutes. Render free tier idles after ~15 min of inactivity.
+    - cron: "*/10 * * * *"
+  # Also allow manual runs.
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping /api/v1/health
+        run: |
+          set -e
+          for i in 1 2 3; do
+            if curl -sf --max-time 30 https://ethara-sapsm.onrender.com/api/v1/health > /dev/null; then
+              echo "ok (attempt $i)"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "backend did not respond after 3 attempts" >&2
+          exit 1

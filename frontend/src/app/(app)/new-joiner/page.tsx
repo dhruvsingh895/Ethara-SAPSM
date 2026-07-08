@@ -9,7 +9,13 @@ import { Badge, Card, PageHeader } from "@/components/ui";
 import { ApiError, apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
-import type { Allocation, Employee, Page, Seat } from "@/lib/types";
+import type {
+  Allocation,
+  Employee,
+  Page,
+  Project,
+  Seat,
+} from "@/lib/types";
 
 /**
  * Turn whatever the user typed (raw numeric id or emp_code like E00042)
@@ -27,6 +33,21 @@ async function resolveEmployeeId(input: string): Promise<number | null> {
     `/api/v1/employees?limit=10&q=${encodeURIComponent(trimmed)}`,
   );
   const exact = res.items.find((e) => e.emp_code.toUpperCase() === upper);
+  return exact ? exact.id : null;
+}
+
+/**
+ * Same idea for a project: numeric id or a code like PRJ001 -> project.id.
+ */
+async function resolveProjectId(input: string): Promise<number | null> {
+  const trimmed = input.trim();
+  if (!trimmed) return null;
+  if (/^\d+$/.test(trimmed)) return Number(trimmed);
+  const upper = trimmed.toUpperCase();
+  const res = await apiFetch<Page<Project>>(
+    `/api/v1/projects?limit=10&q=${encodeURIComponent(trimmed)}`,
+  );
+  const exact = res.items.find((p) => p.code.toUpperCase() === upper);
   return exact ? exact.id : null;
 }
 
@@ -85,7 +106,17 @@ export default function NewJoinerPage() {
     setBusy(true);
     try {
       const body: Record<string, unknown> = { department, limit: 8 };
-      if (projectId.trim()) body.project_id = Number(projectId);
+      if (projectId.trim()) {
+        const resolved = await resolveProjectId(projectId.trim());
+        if (resolved == null) {
+          setErr(
+            `No project matches "${projectId.trim()}". Enter a numeric id or a project code like PRJ001.`,
+          );
+          setBusy(false);
+          return;
+        }
+        body.project_id = resolved;
+      }
       const s = await apiFetch<Seat[]>("/api/v1/new-joiner/suggest", {
         method: "POST",
         json: body,
@@ -234,12 +265,15 @@ export default function NewJoinerPage() {
               ))}
             </Select>
           </Field>
-          <Field label="Project id (optional)" htmlFor="nj-proj">
+          <Field
+            label="Project (id or code, optional)"
+            htmlFor="nj-proj"
+          >
             <Input
               id="nj-proj"
               value={projectId}
               onChange={(e) => setProjectId(e.target.value)}
-              placeholder="e.g. 1"
+              placeholder="1 or PRJ001"
             />
           </Field>
           <div className="flex items-end">
