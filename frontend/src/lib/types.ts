@@ -144,3 +144,14 @@ export interface AiQueryResponse {
   error: string | null;
   duration_ms: number;
 }
+
+export interface AiHistoryEntry {
+  id: number;
+  at: string;
+  prompt: string;
+  generated_sql: string | null;
+  rows_returned: number | null;
+  duration_ms: number | null;
+  status: AiQueryStatus | string;
+  error: string | null;
+}

@@ -4,7 +4,8 @@ import { useState } from "react";
 
 import { Badge, Card } from "@/components/ui";
 import { ApiError, apiFetch } from "@/lib/api";
-import type { AiQueryResponse } from "@/lib/types";
+import { useAuth } from "@/lib/auth-context";
+import type { AiHistoryEntry, AiQueryResponse } from "@/lib/types";
 
 const EXAMPLES = [
   "How many seats are available on floor 3?",
@@ -15,13 +16,16 @@ const EXAMPLES = [
   "List the top 5 projects by member count",
 ];
 
-interface HistoryEntry {
-  id: number;
-  prompt: string;
-  response?: AiQueryResponse;
-  error?: string;
-  pending: boolean;
-}
+type Entry =
+  | {
+      kind: "live";
+      id: number;
+      prompt: string;
+      response?: AiQueryResponse;
+      error?: string;
+      pending: boolean;
+    }
+  | { kind: "history"; id: number; entry: AiHistoryEntry };
 
 const STATUS_LABEL: Record<string, string> = {
   ok: "available",
@@ -32,16 +36,23 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 export default function AiPage() {
+  const { hasRole } = useAuth();
+  const isAdmin = hasRole("admin");
+
   const [prompt, setPrompt] = useState("");
-  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [entries, setEntries] = useState<Entry[]>([]);
   const [busy, setBusy] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
+  const [allUsers, setAllUsers] = useState(false);
+  const [historyErr, setHistoryErr] = useState<string | null>(null);
 
   async function ask(text: string) {
     const q = text.trim();
     if (!q || busy) return;
 
     const id = Date.now();
-    setHistory((h) => [{ id, prompt: q, pending: true }, ...h]);
+    setEntries((h) => [{ kind: "live", id, prompt: q, pending: true }, ...h]);
     setPrompt("");
     setBusy(true);
     try {
@@ -49,16 +60,51 @@ export default function AiPage() {
         method: "POST",
         json: { prompt: q },
       });
-      setHistory((h) =>
-        h.map((e) => (e.id === id ? { ...e, response: r, pending: false } : e)),
+      setEntries((h) =>
+        h.map((e) =>
+          e.kind === "live" && e.id === id
+            ? { ...e, response: r, pending: false }
+            : e,
+        ),
       );
     } catch (e) {
       const msg = e instanceof ApiError ? e.detail : String(e);
-      setHistory((h) =>
-        h.map((e) => (e.id === id ? { ...e, error: msg, pending: false } : e)),
+      setEntries((h) =>
+        h.map((e) =>
+          e.kind === "live" && e.id === id
+            ? { ...e, error: msg, pending: false }
+            : e,
+        ),
       );
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function loadHistory() {
+    setHistoryErr(null);
+    setHistoryLoading(true);
+    try {
+      const params = new URLSearchParams({ limit: "50" });
+      if (isAdmin && allUsers) params.set("all_users", "true");
+      const rows = await apiFetch<AiHistoryEntry[]>(
+        `/api/v1/ai/history?${params.toString()}`,
+      );
+      // Drop any existing history entries, keep live ones on top.
+      setEntries((prev) => {
+        const live = prev.filter((e) => e.kind === "live");
+        const history: Entry[] = rows.map((r) => ({
+          kind: "history",
+          id: r.id,
+          entry: r,
+        }));
+        return [...live, ...history];
+      });
+      setHistoryLoaded(true);
+    } catch (e) {
+      setHistoryErr(e instanceof ApiError ? e.detail : String(e));
+    } finally {
+      setHistoryLoading(false);
     }
   }
 
@@ -108,22 +154,65 @@ export default function AiPage() {
             </button>
           ))}
         </div>
+
+        <div className="mt-3 flex flex-wrap items-center gap-3 border-t pt-3">
+          <button
+            type="button"
+            onClick={loadHistory}
+            disabled={historyLoading}
+            className="rounded-md border px-3 py-1.5 text-xs hover:bg-accent disabled:opacity-50"
+          >
+            {historyLoading
+              ? "Loading…"
+              : historyLoaded
+              ? "Refresh history"
+              : "Load past queries"}
+          </button>
+          {isAdmin && (
+            <label className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+              <input
+                type="checkbox"
+                checked={allUsers}
+                onChange={(e) => setAllUsers(e.target.checked)}
+              />
+              Show all users (admin)
+            </label>
+          )}
+          {historyErr && (
+            <span className="text-xs text-red-600 dark:text-red-400">
+              {historyErr}
+            </span>
+          )}
+        </div>
       </Card>
 
-      {history.length === 0 && (
+      {entries.length === 0 && (
         <p className="rounded-md border border-dashed p-8 text-center text-sm text-muted-foreground">
           Your query history will appear here.
         </p>
       )}
 
-      {history.map((h) => (
-        <QueryCard key={h.id} entry={h} />
-      ))}
+      {entries.map((e) =>
+        e.kind === "live" ? (
+          <LiveQueryCard key={`live-${e.id}`} entry={e} />
+        ) : (
+          <HistoryQueryCard
+            key={`hist-${e.id}`}
+            entry={e.entry}
+            onAskAgain={ask}
+            busy={busy}
+          />
+        ),
+      )}
     </div>
   );
 }
 
-function QueryCard({ entry }: { entry: HistoryEntry }) {
+function LiveQueryCard({
+  entry,
+}: {
+  entry: Extract<Entry, { kind: "live" }>;
+}) {
   const { prompt, response, error, pending } = entry;
 
   return (
@@ -208,6 +297,63 @@ function QueryCard({ entry }: { entry: HistoryEntry }) {
       {response && response.status !== "ok" && response.error && (
         <p className="mt-3 rounded-md bg-yellow-50 p-3 text-sm text-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-200">
           {response.error}
+        </p>
+      )}
+    </Card>
+  );
+}
+
+function HistoryQueryCard({
+  entry,
+  onAskAgain,
+  busy,
+}: {
+  entry: AiHistoryEntry;
+  onAskAgain: (prompt: string) => void;
+  busy: boolean;
+}) {
+  return (
+    <Card className="border-dashed">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-sm font-medium">{entry.prompt}</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {new Date(entry.at).toLocaleString()}
+            {entry.rows_returned != null && (
+              <> · {entry.rows_returned} rows</>
+            )}
+            {entry.duration_ms != null && <> · {entry.duration_ms} ms</>}
+          </p>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <Badge status={STATUS_LABEL[entry.status] ?? "blocked"}>
+            {entry.status}
+          </Badge>
+          <button
+            type="button"
+            onClick={() => onAskAgain(entry.prompt)}
+            disabled={busy}
+            className="rounded-md border px-2 py-1 text-xs hover:bg-accent disabled:opacity-50"
+          >
+            Ask again
+          </button>
+        </div>
+      </div>
+
+      {entry.generated_sql && (
+        <details className="mt-3">
+          <summary className="cursor-pointer text-xs font-medium text-muted-foreground">
+            Generated SQL
+          </summary>
+          <pre className="mt-2 overflow-x-auto rounded-md bg-muted p-3 text-xs">
+            {entry.generated_sql}
+          </pre>
+        </details>
+      )}
+
+      {entry.error && (
+        <p className="mt-3 rounded-md bg-yellow-50 p-3 text-xs text-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-200">
+          {entry.error}
         </p>
       )}
     </Card>
