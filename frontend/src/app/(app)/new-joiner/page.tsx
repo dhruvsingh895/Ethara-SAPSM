@@ -11,6 +11,25 @@ import { useAuth } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
 import type { Allocation, Employee, Page, Seat } from "@/lib/types";
 
+/**
+ * Turn whatever the user typed (raw numeric id or emp_code like E00042)
+ * into an employee.id the backend expects.
+ * Returns null if nothing matches.
+ */
+async function resolveEmployeeId(input: string): Promise<number | null> {
+  const trimmed = input.trim();
+  if (!trimmed) return null;
+  // Pure digits -> treat as id
+  if (/^\d+$/.test(trimmed)) return Number(trimmed);
+  // Otherwise look up by q; require an exact emp_code match
+  const upper = trimmed.toUpperCase();
+  const res = await apiFetch<Page<Employee>>(
+    `/api/v1/employees?limit=10&q=${encodeURIComponent(trimmed)}`,
+  );
+  const exact = res.items.find((e) => e.emp_code.toUpperCase() === upper);
+  return exact ? exact.id : null;
+}
+
 const DEPARTMENTS = [
   "Engineering",
   "Product",
@@ -85,10 +104,18 @@ export default function NewJoinerPage() {
     setErr(null);
     setBusy(true);
     try {
+      const resolvedId = await resolveEmployeeId(empId.trim());
+      if (resolvedId == null) {
+        setErr(
+          `No employee matches "${empId.trim()}". Enter a numeric id or a full emp_code like E00042.`,
+        );
+        setBusy(false);
+        return;
+      }
       const alloc = await apiFetch<Allocation>("/api/v1/new-joiner/allocate", {
         method: "POST",
         json: {
-          employee_id: Number(empId),
+          employee_id: resolvedId,
           seat_id: chosen.id,
           note: "new joiner",
         },
@@ -175,12 +202,15 @@ export default function NewJoinerPage() {
 
         {!creating && !createdEmp && (
           <div className="mt-4">
-            <Field label="Or use an existing employee id" htmlFor="nj-emp-id">
+            <Field
+              label="Or use an existing employee (id or emp_code)"
+              htmlFor="nj-emp-id"
+            >
               <Input
                 id="nj-emp-id"
                 value={empId}
                 onChange={(e) => setEmpId(e.target.value)}
-                placeholder="e.g. 42"
+                placeholder="42 or E00042"
                 className="max-w-xs"
               />
             </Field>
@@ -264,7 +294,7 @@ export default function NewJoinerPage() {
           <p className="mt-1 text-sm font-medium">Allocate</p>
           <div className="mt-4 flex flex-wrap items-end gap-3">
             <Field
-              label="Employee id"
+              label="Employee (id or emp_code)"
               htmlFor="nj-allocate-emp"
               className="flex-1 min-w-[200px]"
             >
@@ -272,7 +302,7 @@ export default function NewJoinerPage() {
                 id="nj-allocate-emp"
                 value={empId}
                 onChange={(e) => setEmpId(e.target.value)}
-                placeholder="from step 1 above"
+                placeholder="42 or E00042 — from step 1 above"
               />
             </Field>
             <button
