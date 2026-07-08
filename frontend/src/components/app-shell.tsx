@@ -19,6 +19,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { AiChatWidget } from "@/components/ai-chat-widget";
+import { Logo } from "@/components/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useAuth } from "@/lib/auth-context";
 import type { UserRole } from "@/lib/types";
@@ -113,9 +114,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <>
       {/* Brand */}
       <div className="flex h-14 items-center gap-2 border-b border-border px-4">
-        <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary text-primary-foreground">
-          <span className="text-xs font-bold">E</span>
-        </div>
+        <Logo size={28} priority />
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold tracking-tight">
             Ethara SAPSM
@@ -227,9 +226,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
           {/* Mobile brand on top bar (only visible on small screens) */}
           <div className="flex items-center gap-2 md:hidden">
-            <div className="flex h-6 w-6 items-center justify-center rounded-md bg-primary text-primary-foreground">
-              <span className="text-[10px] font-bold">E</span>
-            </div>
+            <Logo size={22} />
             <span className="text-sm font-semibold tracking-tight">
               Ethara SAPSM
             </span>

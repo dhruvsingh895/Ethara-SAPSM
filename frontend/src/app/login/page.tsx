@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 
 import { Field, Input } from "@/components/input";
+import { Logo } from "@/components/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
@@ -77,8 +78,8 @@ function LoginForm() {
       <div className="relative z-10 w-full max-w-sm space-y-8">
         {/* Brand */}
         <div className="text-center">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-lg shadow-primary/25">
-            <span className="text-lg font-bold">E</span>
+          <div className="mx-auto flex h-14 w-14 items-center justify-center">
+            <Logo size={56} priority />
           </div>
           <h1 className="mt-4 text-2xl font-semibold tracking-tight">
             Welcome to Ethara SAPSM
