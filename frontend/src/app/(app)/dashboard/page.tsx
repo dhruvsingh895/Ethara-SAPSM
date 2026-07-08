@@ -129,8 +129,13 @@ export default function DashboardPage() {
     other: f.total - f.occupied - f.available,
   }));
 
+  // Sort by (over_by desc, then utilization_pct desc) so the most
+  // over-allocated projects surface first, then the fullest ones.
   const topUtil = [...utilization]
-    .sort((a, b) => b.utilization_pct - a.utilization_pct)
+    .sort((a, b) => {
+      if (b.over_by !== a.over_by) return b.over_by - a.over_by;
+      return b.utilization_pct - a.utilization_pct;
+    })
     .slice(0, 10);
 
   return (
@@ -363,18 +368,28 @@ export default function DashboardPage() {
                     {u.required_seats}
                   </td>
                   <td className="py-2.5 text-right">
-                    <span
-                      className={
-                        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium tabular-nums " +
-                        (u.utilization_pct > 100
-                          ? "bg-danger/10 text-danger"
-                          : u.utilization_pct < 50
-                            ? "bg-warning/10 text-warning"
-                            : "bg-success/10 text-success")
-                      }
-                    >
-                      {u.utilization_pct.toFixed(1)}%
-                    </span>
+                    <div className="inline-flex items-center gap-1.5">
+                      <span
+                        className={
+                          "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium tabular-nums " +
+                          (u.over_by > 0
+                            ? "bg-danger/10 text-danger"
+                            : u.utilization_pct < 50
+                              ? "bg-warning/10 text-warning"
+                              : "bg-success/10 text-success")
+                        }
+                      >
+                        {u.utilization_pct.toFixed(0)}%
+                      </span>
+                      {u.over_by > 0 && (
+                        <span
+                          className="inline-flex items-center rounded-full bg-danger/15 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-danger"
+                          title={`${u.over_by} more members than required_seats`}
+                        >
+                          +{u.over_by} over
+                        </span>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

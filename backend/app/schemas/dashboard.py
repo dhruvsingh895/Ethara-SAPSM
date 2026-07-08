@@ -34,7 +34,11 @@ class ProjectUtilization(BaseModel):
     project_name: str
     active_members: int
     required_seats: int
+    # utilization_pct is capped at 100.0 so charts and progress bars
+    # never look absurd. When a project is staffed above its plan,
+    # over_by carries the surplus for a separate warning badge.
     utilization_pct: float
+    over_by: int = 0
 
 
 class HeadcountByDept(BaseModel):

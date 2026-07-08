@@ -141,9 +141,13 @@ async def project_utilization(
     out: list[ProjectUtilization] = []
     for proj, n in rows:
         n = n or 0
-        pct = (
-            round((n / proj.required_seats) * 100, 2) if proj.required_seats else 0.0
-        )
+        if proj.required_seats:
+            raw_pct = (n / proj.required_seats) * 100
+            capped = min(100.0, round(raw_pct, 2))
+            over_by = max(0, n - proj.required_seats)
+        else:
+            capped = 0.0
+            over_by = 0
         out.append(
             ProjectUtilization(
                 project_id=proj.id,
@@ -151,7 +155,8 @@ async def project_utilization(
                 project_name=proj.name,
                 active_members=n,
                 required_seats=proj.required_seats,
-                utilization_pct=pct,
+                utilization_pct=capped,
+                over_by=over_by,
             )
         )
     return out

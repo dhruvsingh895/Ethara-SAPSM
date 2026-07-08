@@ -112,7 +112,17 @@ export interface ProjectUtilization {
   project_name: string;
   active_members: number;
   required_seats: number;
+  /** Always 0–100 (capped). Over-allocation is exposed via over_by. */
   utilization_pct: number;
+  /** How many members are above required_seats (0 when under-staffed). */
+  over_by: number;
+}
+
+export interface Department {
+  id: number;
+  name: string;
+  description: string | null;
+  employee_count: number;
 }
 
 export interface HeadcountByDept {
