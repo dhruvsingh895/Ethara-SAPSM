@@ -23,39 +23,39 @@ SCHEMA_DDL = """
 
 CREATE TABLE employees (
     id            SERIAL PRIMARY KEY,
-    emp_code      VARCHAR(16) UNIQUE,        -- e.g. E00042
-    first_name    VARCHAR(64),
-    last_name     VARCHAR(64),
-    email         VARCHAR(255),
-    designation   VARCHAR(80),
-    department    VARCHAR(64),               -- Engineering, Product, Design, QA, Data, Sales, Ops, HR, Finance
+    emp_code      VARCHAR(16) UNIQUE,        -- e.g. 'E00042' (uppercase E + 5 digits)
+    first_name    VARCHAR(64),               -- Title Case, e.g. 'Amit'
+    last_name     VARCHAR(64),               -- Title Case, e.g. 'Kumar'
+    email         VARCHAR(255),              -- lowercase, e.g. 'e00042@ethara.dev'
+    designation   VARCHAR(80),               -- free-form Title Case, e.g. 'SDE 2', 'Engineering Manager'
+    department    VARCHAR(64),               -- Title Case exact match: 'Engineering', 'Product', 'Design', 'QA', 'Data', 'Sales', 'Ops', 'HR', 'Finance'
     joining_date  DATE,
-    exit_date     DATE,
-    status        VARCHAR(32),               -- 'ACTIVE' | 'ON_LEAVE' | 'EXITED'
+    exit_date     DATE,                      -- NULL for active/on-leave employees
+    status        VARCHAR(32),               -- UPPERCASE: 'ACTIVE' | 'ON_LEAVE' | 'EXITED'
     manager_id    INT REFERENCES employees(id),
-    current_seat_id     INT REFERENCES seats(id),
-    current_project_id  INT REFERENCES projects(id)
+    current_seat_id     INT REFERENCES seats(id),   -- NULL when the employee has no seat
+    current_project_id  INT REFERENCES projects(id) -- NULL when unassigned
 );
 
 CREATE TABLE seats (
     id           SERIAL PRIMARY KEY,
-    seat_code    VARCHAR(32) UNIQUE,         -- e.g. B2-F3-ZE-S045
+    seat_code    VARCHAR(32) UNIQUE,         -- e.g. 'B2-F3-ZE-S045'
     building     VARCHAR(16),                -- 'B1' | 'B2' | 'B3'
     floor        INT,                        -- 1..5
-    zone         VARCHAR(16),                -- 'ZA'..'ZL' (4 per building, 12 total)
+    zone         VARCHAR(16),                -- 'ZA'..'ZL' (4 per building × 3 buildings = 12 total, uppercase)
     bay          VARCHAR(16),                -- 'BAY-1'..'BAY-4' cluster within a zone
     seat_number  INT,
-    status       VARCHAR(32)                 -- 'AVAILABLE' | 'OCCUPIED' | 'RESERVED' | 'MAINTENANCE'
+    status       VARCHAR(32)                 -- UPPERCASE: 'AVAILABLE' | 'OCCUPIED' | 'RESERVED' | 'MAINTENANCE'
 );
 
 CREATE TABLE projects (
     id             SERIAL PRIMARY KEY,
-    code           VARCHAR(16) UNIQUE,       -- e.g. PRJ001
-    name           VARCHAR(120),
-    client         VARCHAR(120),
-    status         VARCHAR(32),              -- 'ACTIVE' | 'ON_HOLD' | 'COMPLETED'
+    code           VARCHAR(16) UNIQUE,       -- e.g. 'PRJ001' (uppercase PRJ + 3 digits)
+    name           VARCHAR(120),             -- Title Case, e.g. 'Indigo', 'Falcon Migration 02'
+    client         VARCHAR(120),             -- Title Case, e.g. 'Aurora Bank', 'Ethara Internal'
+    status         VARCHAR(32),              -- UPPERCASE: 'ACTIVE' | 'ON_HOLD' | 'COMPLETED'
     start_date     DATE,
-    end_date       DATE,
+    end_date       DATE,                     -- NULL means still running
     required_seats INT,
     pm_id          INT REFERENCES employees(id)
 );
@@ -64,10 +64,10 @@ CREATE TABLE project_assignments (
     id             SERIAL PRIMARY KEY,
     employee_id    INT REFERENCES employees(id),
     project_id     INT REFERENCES projects(id),
-    role           VARCHAR(80),
+    role           VARCHAR(80),              -- Title Case: 'Developer' | 'Lead' | 'Analyst' | 'Designer' | 'Reviewer' | 'SDET'
     allocation_pct INT,                      -- 0-100
     start_date     DATE,
-    end_date       DATE                      -- NULL means still active
+    end_date       DATE                      -- NULL means currently active
 );
 
 CREATE TABLE seat_allocations (
@@ -87,9 +87,21 @@ Rules:
 3. Do NOT reference tables named `users`, `audit_log`, or `ai_query_log` — they are restricted.
 4. Prefer aggregate queries when the question asks for counts/totals.
 5. Include a LIMIT clause of 100 or fewer for row-returning queries.
-6. Use ILIKE for case-insensitive text search on names, emails, or codes.
-7. Enum values are stored in UPPERCASE. Use exactly the strings shown in the schema comments — e.g. 'AVAILABLE', 'OCCUPIED', 'ACTIVE', 'ON_LEAVE' — never lowercase. When in doubt, wrap comparisons with UPPER(column) = 'VALUE'.
-8. Return ONLY the SQL — no explanations, no prose, no markdown.
+6. Case-sensitivity is CRITICAL. The DB is case-sensitive on equality comparisons.
+   - Enum-backed columns (employees.status, seats.status, projects.status) are stored UPPERCASE. Use 'ACTIVE', 'OCCUPIED', 'AVAILABLE', etc. Never 'active', 'occupied'.
+   - Free-text columns (department, first_name, client, project name, assignment role) are stored Title Case: 'Engineering', 'Aurora Bank', 'Developer'.
+   - When you are matching a user-typed value against any free-text column, ALWAYS use ILIKE with wildcards: `department ILIKE '%engineer%'`. Never use plain `=` on user-typed text.
+   - When counting or filtering by enum status, use the exact UPPERCASE spelling — no ILIKE needed.
+7. Handle NULLs explicitly:
+   - `current_seat_id IS NULL` means the employee has no seat.
+   - `current_project_id IS NULL` means the employee is unassigned.
+   - `end_date IS NULL` on project_assignments or seat_allocations means the row is currently active.
+   - `exit_date IS NULL` on employees means they haven't left.
+8. "Available seats", "free seats", "empty seats" all mean `seats.status = 'AVAILABLE'`.
+   "Blocked" / "maintenance" / "out of service" all mean `seats.status = 'MAINTENANCE'`.
+   "Occupied" / "taken" / "used" means `seats.status = 'OCCUPIED'`.
+9. To count active project members, join `project_assignments` with `end_date IS NULL OR end_date >= CURRENT_DATE`.
+10. Return ONLY the SQL — no explanations, no prose, no markdown, no code fences.
 
 Schema:
 """ + SCHEMA_DDL
