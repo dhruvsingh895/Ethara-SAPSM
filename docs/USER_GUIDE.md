@@ -120,7 +120,7 @@ An interactive floor plan. Pick a **Building** (B1/B2/B3), a **Floor** (F1..F5),
 
 Click any seat to open the **Selection** panel on the right:
 
-- The seat's full code (e.g. `B1-F1-Z1-S055`), building/floor/zone.
+- The seat's full code (e.g. `B1-F1-ZA-S055`), building/floor/zone/bay.
 - If occupied: the current occupant's name, department, and since-date.
 - **Admin actions** (admin only): change the seat's status (mark as maintenance, reserve, or free it back to available), or delete the seat entirely. Deleting is guarded — you can't delete a seat while someone is actively sitting in it; release the allocation first.
 
