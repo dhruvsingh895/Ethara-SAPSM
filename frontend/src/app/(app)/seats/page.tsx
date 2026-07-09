@@ -56,7 +56,8 @@ export default function SeatsPage() {
 
   const query = useMemo(() => {
     const p = new URLSearchParams({
-      limit: "200",
+      // 5 zones × 110 seats = 550 per floor; use 600 for headroom.
+      limit: "600",
       offset: "0",
       building,
       floor: String(floor),

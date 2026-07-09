@@ -24,7 +24,7 @@ class PageParams:
 
     def __init__(
         self,
-        limit: int = Query(50, ge=1, le=200, description="Max rows to return"),
+        limit: int = Query(50, ge=1, le=1000, description="Max rows to return"),
         offset: int = Query(0, ge=0, description="Rows to skip"),
     ):
         self.limit = limit
