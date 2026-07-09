@@ -84,7 +84,7 @@ The landing page after login. It's a live snapshot — every widget hits the dat
 **Bottom row:**
 
 - **Occupancy by floor** — stacked bar per floor across all 3 buildings × 5 floors (15 columns). Occupied is blue, available is green, reserved/maintenance is grey.
-- **Top project utilization** — active members ÷ required seats, capped at 100%. Any project that is over-allocated shows an `over by N` badge instead of an inflated percentage, so utilisation stays readable.
+- **Top project utilization** — active members ÷ required seats, capped at 100%. The percentage pill is colour-coded on a 5-band scale so the table reads like a real gradient: **red** for over-allocated (shows an extra `+N over` badge), **amber** at ≥95% (at capacity, tight), **emerald** in the 70–94% healthy zone, **lime** for 40–69% building-up, and **amber** again below 40% (under-staffed).
 
 Hover any chart segment to see exact values in a tooltip.
 
@@ -126,7 +126,7 @@ Click any seat to open the **Selection** panel on the right:
 - If occupied: the current occupant's name, department, and since-date.
 - **Admin actions** (admin only): change the seat's status (mark as maintenance, reserve, or free it back to available), or delete the seat entirely. Deleting is guarded — you can't delete a seat while someone is actively sitting in it; release the allocation first.
 
-The layout is the real physical grid used by the seed data: 3 buildings × 5 floors × 4 zones × 100 seats = 6,000 seats. Each zone is split into 4 physical bays (BAY-1..BAY-4); the seat code (`B1-F3-ZA-S045`) encodes building/floor/zone/seat-number, and the bay is shown in the Selection panel.
+The layout is the real physical grid used by the seed data: 3 buildings × 5 floors × 4 zones × 100 seats = 6,000 seats. Zone codes span `ZA..ZL` (four zones per building × three buildings = 12 total, satisfying spec §6's "min 10 zones"). Each zone is split into 4 physical bays (BAY-1..BAY-4). The seat code (`B1-F3-ZA-S045`) encodes building / floor / zone / seat-number; the bay label is shown separately in the Selection panel.
 
 ---
 
@@ -139,9 +139,9 @@ The staffing view. Every project shows its code, name, client, current status (a
 - **Search** — matches partial text against code, name, or client.
 - **View** opens the project detail page: description, members, allocations, and the ability to add/remove members (PM or admin).
 - **New project** button (admin/PM only) opens the create form — code, name, client, description, required seats, dates.
-- Per-row delete (admin only) removes the project and cascades allocations cleanly.
+- **Delete** lives only on the project detail page header (mirroring the safer employee flow) so nobody nukes a row by accident. Deleting cascades allocations cleanly.
 
-The first 11 seeded projects use the exact names the assessment spec asks for — Indigo, Indreed, Mydreed, Preed, Serfy, Oreed, bedegreed, Opreed, Serry, Kaary, Mered. The remaining rows are generated so the dashboard's utilisation spread stays interesting. Seed data intentionally puts the top 2 projects at exactly 100% utilisation; the rest are staffed at 87–98% so the utilisation table on the dashboard shows a realistic spread.
+The first 11 seeded projects use the exact names the assessment spec asks for — `PRJ001` Indigo, `PRJ002` Indreed, `PRJ003` Mydreed, `PRJ004` Preed, `PRJ005` Serfy, `PRJ006` Oreed, `PRJ007` bedegreed (lowercase, as in the spec), `PRJ008` Opreed, `PRJ009` Serry, `PRJ010` Kaary, `PRJ011` Mered. The remaining rows are generated so the dashboard's utilisation spread stays interesting. Seed data intentionally puts the top 2 projects at exactly 100% utilisation; the rest are staffed at 87–98% so the utilisation table on the dashboard shows a realistic spread.
 
 ---
 
@@ -155,6 +155,8 @@ The chronological ledger of every seat-to-employee assignment ever made. Filter 
 - Per-row **Release** button (admin/HR) frees the seat immediately and stamps the release timestamp. The employee's `current_seat_id` on their profile updates in the same transaction.
 
 Think of this page as the audit log — the source of truth for "who sat where when."
+
+> **Related but different — project assignments.** Each project's detail page shows an "Active roster" table listing every employee currently mapped to it. Per spec §3.2 each employee is mapped to exactly one active project at a time (backend refuses a second concurrent assignment; DB partial-unique index enforces it), so people appear on exactly one roster.
 
 ---
 
@@ -237,7 +239,7 @@ Admin-only. The login accounts for the app itself (separate from the employee re
 | Create / edit employees                |   ✓   |  ✓  |     |          |
 | New-joiner flow (onboard + allocate)   |   ✓   |  ✓  |     |          |
 | Release a seat allocation              |   ✓   |  ✓  |     |          |
-| Change a seat's status (maintenance/reserve) |   ✓   |     |     |          |
+| Change a seat's status (available / reserved / maintenance) |   ✓   |     |     |          |
 | Delete a seat                          |   ✓   |     |     |          |
 | Create / delete projects               |   ✓   |     |  ✓  |          |
 | Add / remove project members           |   ✓   |     |  ✓  |          |

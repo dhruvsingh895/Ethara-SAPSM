@@ -32,6 +32,7 @@ All entries are ordered chronologically. Each entry follows the schema:
 - [Phase 4 — Seed Data](#phase-4--seed-data)
 - [Phase 5 — Frontend](#phase-5--frontend)
 - [Phase 6 — AI Assistant (Gemini NL to SQL)](#phase-6--ai-assistant-gemini-nl-to-sql)
+- [Phase 6.5 — Testing prompts](#phase-65--testing-prompts)
 - [Phase 7 — Deployment](#phase-7--deployment)
 - [Spec §9 summary — What AI got right / wrong / how verified](#spec-9-summary--what-ai-got-right--wrong--how-verified)
 
@@ -241,6 +242,41 @@ Round-tripped `hash_password` / `verify_password` and `create_access_token` / `d
 **Output (summary):** `frontend/src/app/(app)/ai/page.tsx` — client-side stateful history of query cards. Each card shows the prompt, status badge (colour-mapped to available/reserved/blocked), Gemini's SQL in a collapsible `<details>`, the result table with column headers from the response, row count footer, and error banner for non-ok statuses. Sidebar link added under `AppShell`.
 **Manual fixes:** Chose `<details>` for the SQL disclosure so keyboard users get open/close for free without extra state. Empty-history state shows a dashed placeholder card so the page never looks broken on first load. Results table uses `String(v)` fallback for typed cells so nulls render as `—` and booleans/numbers don't crash React.
 **Validation:** `npm run build` succeeds. AI route lists at 3KB / 98KB first-load — same weight class as the other pages. IDE flagged the logout button on `AppShell` for missing `type="button"` in the same commit — fixed. Not driven end-to-end in a real browser by AI tooling (same limitation noted in Phase 5); user should click through once before deployment.
+
+---
+
+## Phase 6.5 — Testing prompts
+
+Testing on this project runs at three layers: (1) a pure-Python unit suite that gates every push in CI, (2) an end-to-end RBAC audit that probes the live deployment, and (3) k6 load testing against prod (that pair lives in Phase 8 for evidence). AI was used at each layer.
+
+### 18a. SQL guard unit tests — 2026-07-08
+**Tool:** Claude
+**Phase:** Testing
+**Prompt (summary):** "Write a pure-Python pytest suite for the SQL guard. Cover the whole threat surface — DDL, DML, sensitive-table refs, multi-statement, statement smuggling, resource exhaustion, table-cycle exfiltration. No DB dependency."
+**Output (summary):** 13-case test list embedded in `.github/workflows/ci.yml` (later refactored to `scripts/ai_smoke_test.py` for the docs/ai_safety.md evidence table). Each case asserts either `sanitize_and_validate` raises `UnsafeSQLError` with a specific-enough message, or returns a normalised SELECT with LIMIT injected. 10/10 known-dangerous cases blocked, 3/3 happy-path cases pass.
+**Manual fixes:** Two cases the model got wrong on the first pass: a nested subquery referencing `users` metaphorically was treated as forbidden (correct) but the message said "restricted keyword" when it should have said "restricted table" — fixed for grading clarity. The `SET LOCAL default_transaction_read_only = ON; SELECT ...` smuggling case initially wasn't in the suite; added it after noticing the runtime SET-LOCAL guard was our last line of defence for it.
+**Validation:** Runs in <5s in CI (`.github/workflows/ci.yml`, backend job). Runs locally via `python scripts/ai_smoke_test.py`. Zero flakes across 20+ CI runs.
+
+### 18b. RBAC audit script — 2026-07-08
+**Tool:** Claude
+**Phase:** Testing
+**Prompt (summary):** "Write a script that probes every role × write-endpoint combination on the live prod deployment, asserts 403 for denied and 2xx for allowed, and prints a matrix."
+**Output (summary):** `backend/scripts/rbac_audit.py` — logs in as each of the 4 seeded users, then hits all 13 mutating endpoints with a benign payload, checking the response. Expected: 52 = 4 × 13 combos, and each is either "allowed → 2xx (or 404 on nonexistent id, which is a non-auth business error)" or "denied → 403". Anything else is a bug.
+**Manual fixes:** First cut asserted 2xx too strictly and failed on legit 404s from `GET /employees/999999`. Relaxed to "not 403" for the allowed cases so business errors (missing FK, uniqueness) don't confuse the auth check. Also added a `--role` CLI flag to probe one role at a time when debugging a specific change.
+**Validation:** Runs against live prod: **52/52 pass**. Re-ran after every write-path change during Phases 5–8; caught one regression where the departments cascade endpoint had inherited the wrong dependency and silently returned 401 instead of 403.
+
+### 18c. End-to-end business-rule probes — 2026-07-09
+**Tool:** Claude
+**Phase:** Testing
+**Prompt (summary):** "Write a script that verifies every spec §8 business rule empirically on the live DB — e.g. no employee has more than one active seat, no seat has more than one active occupant, no duplicate emails."
+**Output (summary):** A one-off pytest-style script (kept in this session's transcript, not committed as a first-class artefact) that runs 4 SQL probes against live Neon:
+- `SELECT COUNT(*) FROM (SELECT employee_id FROM seat_allocations WHERE released_at IS NULL GROUP BY employee_id HAVING COUNT(*)>1) x` → must return 0
+- Same shape for `seat_id` → must return 0
+- `SELECT COUNT(*) FROM (SELECT email FROM employees GROUP BY email HAVING COUNT(*)>1) x` → must return 0
+- `SELECT COUNT(*) FROM (SELECT building, floor, zone, seat_number FROM seats GROUP BY ... HAVING COUNT(*)>1) x` → must return 0
+Plus §3.2 after enforcing 1:1: `SELECT COUNT(*) FROM (SELECT employee_id FROM project_assignments WHERE end_date IS NULL GROUP BY employee_id HAVING COUNT(*)>1) x` → 0.
+**Manual fixes:** Ran against every reseed. Once when I introduced a bug in the seat-transfer path, the "seat has >1 occupant" probe would have caught it; instead I noticed via `docs/perf/queries.md` before probing. Added the probes to the release checklist so future changes get sanity-tested.
+**Validation:** All 5 probes returned 0 on live prod after the final reseed. Documented in `README.md` Seed Data table alongside the spec §6 minimums.
 
 ---
 

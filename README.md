@@ -96,7 +96,7 @@ A full-stack application to manage seat allocation and project mapping for appro
 ### Core (spec-required)
 
 - **Employee Management** — CRUD, bulk import, filter by dept/project/status. Fields: id, employee_code, name, email, department, role, joining_date, status, project_id.
-- **Project Mapping** — assign / reassign employees, view roster, allocation %. All 11 spec-named projects (Indigo, Indreed, Mydreed, Preed, Serfy, Oreed, bedegreed, Opreed, Serry, Kaary, Mered) are seeded.
+- **Project Mapping** — assign / reassign employees, view roster. Each employee is mapped to exactly one active project at a time (spec §3.2, enforced by a partial unique index + endpoint guard). All 11 spec-named projects (Indigo, Indreed, Mydreed, Preed, Serfy, Oreed, bedegreed, Opreed, Serry, Kaary, Mered) are seeded as PRJ001..PRJ011.
 - **Seat Allocation & Release** — allocate, release, transfer, reserve, mark maintenance. Seats have floor/zone/**bay**/seat_number. Full audit history.
 - **New Joiner Allocation** — suggest a seat near the joiner's team/project; fallback zones when preferred zone is full.
 - **Search & Filter** — by name, employee id, email, project, floor, zone, seat status, department.

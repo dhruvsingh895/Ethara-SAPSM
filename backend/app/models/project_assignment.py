@@ -13,6 +13,7 @@ from sqlalchemy import (
     Integer,
     String,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -33,6 +34,16 @@ class ProjectAssignment(Base, TimestampMixin):
         ),
         CheckConstraint("allocation_pct BETWEEN 0 AND 100", name="allocation_range"),
         Index("ix_pa_active", "employee_id", "end_date"),
+        # Spec §3.2: each employee should be mapped to only ONE active
+        # project. Partial unique index — an employee may appear on
+        # multiple rows historically (past assignments with end_date set),
+        # but only one row can have end_date IS NULL at a time.
+        Index(
+            "uq_pa_active_employee",
+            "employee_id",
+            unique=True,
+            postgresql_where=text("end_date IS NULL"),
+        ),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)

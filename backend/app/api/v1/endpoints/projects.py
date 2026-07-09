@@ -307,7 +307,29 @@ async def create_assignment(
     if p is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Project not found")
 
-    a = ProjectAssignment(**payload.model_dump())
+    # Spec §3.2: one active project per employee. Reject early with a
+    # clear message rather than relying on the partial-unique index to
+    # raise IntegrityError (that produces uglier text on the wire).
+    existing_active = (
+        await db.execute(
+            select(ProjectAssignment).where(
+                ProjectAssignment.employee_id == payload.employee_id,
+                ProjectAssignment.end_date.is_(None),
+            )
+        )
+    ).scalar_one_or_none()
+    if existing_active is not None:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"Employee {payload.employee_id} already has an active assignment "
+            f"on project {existing_active.project_id}. Close it first (set an "
+            f"end_date) before assigning to a new project.",
+        )
+
+    # Force allocation_pct=100 to reflect the 1:1 mapping.
+    data = payload.model_dump()
+    data["allocation_pct"] = 100
+    a = ProjectAssignment(**data)
     db.add(a)
     try:
         await db.flush()
@@ -315,13 +337,18 @@ async def create_assignment(
         await db.rollback()
         raise HTTPException(status.HTTP_409_CONFLICT, f"Assignment conflict: {e}")
 
+    # Keep the denormalised current_project_id on employees in sync.
+    emp = await db.get(Employee, a.employee_id)
+    if emp is not None:
+        emp.current_project_id = a.project_id
+
     await audit.record(
         db,
         actor_user_id=actor.id,
         action=AuditAction.ASSIGN_PROJECT,
         entity_type="project_assignment",
         entity_id=a.id,
-        detail=f"emp={a.employee_id} proj={a.project_id} pct={a.allocation_pct}",
+        detail=f"emp={a.employee_id} proj={a.project_id}",
     )
     await db.commit()
     await db.refresh(a)
@@ -347,6 +374,14 @@ async def update_assignment(
     changes = payload.model_dump(exclude_unset=True)
     for k, v in changes.items():
         setattr(a, k, v)
+
+    # Spec §3.2: if this update closes out the active assignment,
+    # the employee's current_project_id should also clear so they no
+    # longer appear as mapped to it.
+    if "end_date" in changes and changes["end_date"] is not None:
+        emp = await db.get(Employee, a.employee_id)
+        if emp is not None and emp.current_project_id == a.project_id:
+            emp.current_project_id = None
 
     await db.flush()
     await audit.record(
@@ -377,7 +412,16 @@ async def delete_assignment(
     if a is None or a.project_id != project_id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Assignment not found")
     emp_id = a.employee_id
+    was_active = a.end_date is None
     await db.delete(a)
+
+    # Keep employees.current_project_id in sync if we're removing the
+    # active assignment (spec §3.2).
+    if was_active:
+        emp = await db.get(Employee, emp_id)
+        if emp is not None and emp.current_project_id == project_id:
+            emp.current_project_id = None
+
     await audit.record(
         db,
         actor_user_id=actor.id,

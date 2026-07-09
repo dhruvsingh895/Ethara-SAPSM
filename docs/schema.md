@@ -27,7 +27,9 @@ Seed data uses the 11 exact project names named in spec §3.2 (Indigo, Indreed, 
 Spec §7 names the project-manager column `manager_name` (a string). Ours is `pm_id` — a nullable FK into `employees(id)` — so the manager stays consistent when an employee is renamed, and joins are cheap. The API's `ProjectOut` exposes `pm_id`; the frontend fetches the employee row to render the name.
 
 ### `project_assignments`
-M2M join between employees and projects, with `role`, `allocation_pct` (0-100), `start_date`, and optional `end_date`.
+Join between employees and projects, with `role`, `allocation_pct` (0-100, currently always 100), `start_date`, and optional `end_date`.
+
+Spec §3.2 requires each employee to be mapped to **one active project at a time**. Enforced with a partial unique index — `uq_pa_active_employee` on `(employee_id) WHERE end_date IS NULL`. Historical rows (with `end_date` set) are unrestricted so a full assignment history is preserved. The `POST /projects/{id}/assignments` endpoint rejects any second concurrent assignment with a 409 before hitting the index.
 
 ### `seat_allocations`
 Full history of who sat where. A row with `released_at IS NULL` is currently active. Composite indexes on `(seat_id, released_at)` and `(employee_id, released_at)` make active-lookup queries O(log n).
@@ -81,10 +83,15 @@ Per spec §8:
 7. **Unique seat per floor/zone.** Composite unique index on `(building, floor, zone, seat_number)`.
 8. **Dashboard freshness.** No caching — every dashboard query hits the DB directly. Denormalized fields on `employees` keep the hot paths O(1).
 
+Plus one non-numbered rule from spec §3.2:
+
+9. **One active project per employee.** Partial unique index on `project_assignments (employee_id) WHERE end_date IS NULL` + endpoint-level 409 guard. Historical rows unaffected.
+
 ## Migrations
 
 - `382bc0c49159` — initial schema, all 8 tables and their indexes.
 - `ce61f5725b04` — add `departments` table.
 - `a2f4c81b5e07` — add `seats.bay` column, rename `blocked` → `maintenance` in `seats.status` and `audit_log.action`, add composite unique on `(building, floor, zone, seat_number)`.
+- `c7d3e2a91f10` — enforce spec §3.2: partial unique index on `project_assignments (employee_id) WHERE end_date IS NULL` so an employee has at most one active assignment.
 
 Managed by Alembic; see [`backend/alembic/versions/`](../backend/alembic/versions/).

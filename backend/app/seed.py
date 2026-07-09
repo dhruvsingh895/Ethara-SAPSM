@@ -338,44 +338,34 @@ async def seed(
     log.info("projects: %d", len(projects))
 
     # ---------------- Project assignments ----------------
-    log.info("generating project assignments")
+    log.info("generating project assignments (one active per employee, spec §3.2)")
     active_projects = [p for p in projects if p.status == ProjectStatus.ACTIVE]
     assignments: list[ProjectAssignment] = []
-    # Most employees only touch one project. Keep long-tail small so
-    # dashboard utilization numbers stay believable at 5k scale.
+    # Spec §3.2 requires each employee to be mapped to exactly one active
+    # project. ~90% of active employees get an assignment; the rest sit
+    # in the "pending allocation" pool (helps satisfy spec §6's ≥50).
     for e in active_employees:
-        n_assign = rng.choices([0, 1, 2], weights=[0.10, 0.82, 0.08])[0]
-        chosen: set[int] = set()
-        remaining = 100
-        for _ in range(n_assign):
-            if not active_projects or remaining <= 0:
-                break
-            p = rng.choice(active_projects)
-            if p.id in chosen:
-                continue
-            chosen.add(p.id)
-            pct = rng.choice([25, 50, 75, 100])
-            if pct > remaining:
-                pct = remaining
-            remaining -= pct
-            start = max(p.start_date, e.joining_date)
-            if start > date.today():
-                continue
-            assignments.append(
-                ProjectAssignment(
-                    employee_id=e.id,
-                    project_id=p.id,
-                    role=rng.choice(PROJECT_ROLES),
-                    allocation_pct=pct,
-                    start_date=start,
-                )
+        if not active_projects:
+            break
+        if rng.random() < 0.10:
+            continue  # deliberately unassigned
+        p = rng.choice(active_projects)
+        start = max(p.start_date, e.joining_date)
+        if start > date.today():
+            continue
+        assignments.append(
+            ProjectAssignment(
+                employee_id=e.id,
+                project_id=p.id,
+                role=rng.choice(PROJECT_ROLES),
+                allocation_pct=100,  # 1:1 mapping means full-time on this one
+                start_date=start,
             )
-        # primary project = one they were first assigned to
-        if chosen:
-            e.current_project_id = next(iter(chosen))
+        )
+        e.current_project_id = p.id
     db.add_all(assignments)
     await db.flush()
-    log.info("assignments: %d", len(assignments))
+    log.info("assignments: %d (one active per employee)", len(assignments))
 
     # ---------------- Re-tune required_seats to realistic values ----------------
     # We now know how many people actually landed on each project. Adjust

@@ -63,6 +63,14 @@ class EmployeeOut(EmployeeBase):
         # Spec calls it `role`; internally we call it `designation`.
         return self.designation
 
+    @computed_field  # type: ignore[misc]
+    @property
+    def seat_allocation_status(self) -> str:
+        # Spec §3.1 lists "Seat allocation status" as an employee field.
+        # Derive it from current_seat_id so we don't store denormalised
+        # state that could drift from the actual seat_allocations rows.
+        return "allocated" if self.current_seat_id is not None else "pending"
+
     def model_post_init(self, __context) -> None:  # type: ignore[override]
         # Backfill the spec-alias fields from the canonical ones so a
         # single Pydantic instance carries both shapes.

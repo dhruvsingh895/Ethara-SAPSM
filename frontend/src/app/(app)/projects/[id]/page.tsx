@@ -130,7 +130,6 @@ export default function ProjectDetailPage() {
             <tr className="border-b border-border bg-muted/40">
               <Th>Employee</Th>
               <Th>Role</Th>
-              <Th className="text-right">Allocation</Th>
               <Th>Start</Th>
               <Th>End</Th>
             </tr>
@@ -139,7 +138,7 @@ export default function ProjectDetailPage() {
             {roster.length === 0 && (
               <tr>
                 <td
-                  colSpan={5}
+                  colSpan={4}
                   className="px-4 py-10 text-center text-sm text-muted-foreground"
                 >
                   No active assignments.
@@ -160,9 +159,6 @@ export default function ProjectDetailPage() {
                   </Link>
                 </td>
                 <td className="px-4 py-2.5">{a.role}</td>
-                <td className="px-4 py-2.5 text-right tabular-nums">
-                  {a.allocation_pct}%
-                </td>
                 <td className="px-4 py-2.5 text-muted-foreground">
                   {a.start_date}
                 </td>
