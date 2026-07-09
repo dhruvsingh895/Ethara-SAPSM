@@ -27,6 +27,7 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    # Add the new column and unique index first — cheap, non-destructive.
     op.add_column(
         "seats",
         sa.Column("bay", sa.String(length=16), nullable=True),
@@ -38,51 +39,53 @@ def upgrade() -> None:
         unique=True,
     )
 
-    # SQLAlchemy's `native_enum=False` created CHECK constraints on
-    # seats.status and audit_log.action that reference the OLD enum
-    # names (BLOCKED, BLOCK). Widen those first, then UPDATE data.
-    # We drop-if-exists because Alembic's initial migration used
-    # auto-generated constraint names and we don't want a stale name
-    # blocking prod deploys.
+    # ------------------------------------------------------------------
+    # SQLAlchemy with `native_enum=False` stores enum NAMES (uppercase:
+    # 'BLOCKED', 'BLOCK'), and the initial migration wrote CHECK
+    # constraints against those uppercase names. Keep the same on-disk
+    # contract — just rename BLOCKED -> MAINTENANCE. Values-in-code
+    # ('maintenance' lowercase) are the client-facing wire format and
+    # don't touch the DB directly.
+    # ------------------------------------------------------------------
     op.execute("ALTER TABLE seats DROP CONSTRAINT IF EXISTS seat_status")
     op.execute("ALTER TABLE seats DROP CONSTRAINT IF EXISTS ck_seats_seat_status")
     op.execute("ALTER TABLE audit_log DROP CONSTRAINT IF EXISTS audit_action")
     op.execute("ALTER TABLE audit_log DROP CONSTRAINT IF EXISTS ck_audit_log_audit_action")
 
-    # Migrate existing data to the new spec vocabulary.
-    op.execute("UPDATE seats SET status = 'maintenance' WHERE status = 'blocked'")
-    op.execute("UPDATE audit_log SET action = 'maintenance' WHERE action = 'block'")
+    # Rename existing rows to the new enum name.
+    op.execute("UPDATE seats SET status = 'MAINTENANCE' WHERE status = 'BLOCKED'")
+    op.execute("UPDATE audit_log SET action = 'MAINTENANCE' WHERE action = 'BLOCK'")
 
-    # Recreate CHECK constraints with the new value set. Using stable
-    # names so future migrations can find them.
+    # Recreate CHECK constraints with the new NAME set. Names, not
+    # values, are what SQLAlchemy inserts under native_enum=False.
     op.execute(
         "ALTER TABLE seats ADD CONSTRAINT ck_seats_seat_status "
-        "CHECK (status IN ('available','occupied','reserved','maintenance'))"
+        "CHECK (status IN ('AVAILABLE','OCCUPIED','RESERVED','MAINTENANCE'))"
     )
     op.execute(
         "ALTER TABLE audit_log ADD CONSTRAINT ck_audit_log_audit_action "
         "CHECK (action IN ("
-        "'allocate','release','transfer','maintenance','reserve',"
-        "'assign_project','unassign_project','create_employee',"
-        "'update_employee','change_role'))"
+        "'ALLOCATE','RELEASE','TRANSFER','MAINTENANCE','RESERVE',"
+        "'ASSIGN_PROJECT','UNASSIGN_PROJECT','CREATE_EMPLOYEE',"
+        "'UPDATE_EMPLOYEE','CHANGE_ROLE'))"
     )
 
 
 def downgrade() -> None:
     op.execute("ALTER TABLE seats DROP CONSTRAINT IF EXISTS ck_seats_seat_status")
     op.execute("ALTER TABLE audit_log DROP CONSTRAINT IF EXISTS ck_audit_log_audit_action")
-    op.execute("UPDATE audit_log SET action = 'block' WHERE action = 'maintenance'")
-    op.execute("UPDATE seats SET status = 'blocked' WHERE status = 'maintenance'")
+    op.execute("UPDATE audit_log SET action = 'BLOCK' WHERE action = 'MAINTENANCE'")
+    op.execute("UPDATE seats SET status = 'BLOCKED' WHERE status = 'MAINTENANCE'")
     op.execute(
         "ALTER TABLE seats ADD CONSTRAINT ck_seats_seat_status "
-        "CHECK (status IN ('available','occupied','reserved','blocked'))"
+        "CHECK (status IN ('AVAILABLE','OCCUPIED','RESERVED','BLOCKED'))"
     )
     op.execute(
         "ALTER TABLE audit_log ADD CONSTRAINT ck_audit_log_audit_action "
         "CHECK (action IN ("
-        "'allocate','release','transfer','block','reserve',"
-        "'assign_project','unassign_project','create_employee',"
-        "'update_employee','change_role'))"
+        "'ALLOCATE','RELEASE','TRANSFER','BLOCK','RESERVE',"
+        "'ASSIGN_PROJECT','UNASSIGN_PROJECT','CREATE_EMPLOYEE',"
+        "'UPDATE_EMPLOYEE','CHANGE_ROLE'))"
     )
     op.drop_index("uq_seats_building_floor_zone_seat_number", table_name="seats")
     op.drop_column("seats", "bay")
