@@ -99,36 +99,105 @@ class GeminiNotConfigured(RuntimeError):
     pass
 
 
+# Cache for the currently-configured (key_index, model). We rebuild
+# the model whenever we rotate to a different key because
+# `genai.configure()` is process-global — the model captures the key
+# via SDK-internal state at construction time.
+_ACTIVE_KEY_INDEX = 0
 _MODEL = None
 
 
-def _get_model():
-    global _MODEL
-    if _MODEL is not None:
-        return _MODEL
+def _mask(key: str) -> str:
+    if not key:
+        return "<empty>"
+    if len(key) <= 8:
+        return key[:2] + "***"
+    return f"{key[:4]}...{key[-4:]}"
+
+
+def _build_model(key: str):
     settings = get_settings()
-    if not settings.gemini_api_key:
-        raise GeminiNotConfigured("GEMINI_API_KEY is not set")
-    genai.configure(api_key=settings.gemini_api_key)
-    _MODEL = genai.GenerativeModel(
+    genai.configure(api_key=key)
+    m = genai.GenerativeModel(
         settings.gemini_model,
         system_instruction=_SYSTEM_PROMPT,
     )
-    log.info("gemini configured model=%s", settings.gemini_model)
+    log.info("gemini configured model=%s key=%s", settings.gemini_model, _mask(key))
+    return m
+
+
+def _get_model():
+    global _MODEL, _ACTIVE_KEY_INDEX
+    if _MODEL is not None:
+        return _MODEL
+    settings = get_settings()
+    keys = settings.gemini_api_keys_list
+    if not keys:
+        raise GeminiNotConfigured("GEMINI_API_KEY is not set")
+    _ACTIVE_KEY_INDEX = 0
+    _MODEL = _build_model(keys[0])
+    return _MODEL
+
+
+def _rotate_to_next_key() -> Optional["genai.GenerativeModel"]:
+    """Move to the next key in the list. Returns the new model, or None
+    if we've exhausted the list. Failure of a key doesn't remove it —
+    on the next process restart we start over from index 0.
+    """
+    global _MODEL, _ACTIVE_KEY_INDEX
+    settings = get_settings()
+    keys = settings.gemini_api_keys_list
+    if _ACTIVE_KEY_INDEX + 1 >= len(keys):
+        return None
+    _ACTIVE_KEY_INDEX += 1
+    next_key = keys[_ACTIVE_KEY_INDEX]
+    log.warning(
+        "gemini key rotation: index %d -> %d (%s)",
+        _ACTIVE_KEY_INDEX - 1, _ACTIVE_KEY_INDEX, _mask(next_key),
+    )
+    _MODEL = _build_model(next_key)
     return _MODEL
 
 
 async def generate_sql(nl_query: str) -> str:
-    """Ask Gemini for a SQL translation of the natural-language query."""
-    model = _get_model()
-    # Gemini SDK's generate_content is sync; wrap for consistency with the
-    # async endpoint (network I/O bound, so a thread is acceptable here).
+    """Ask Gemini for a SQL translation of the natural-language query.
+
+    Iterates the configured GEMINI_API_KEY list. On any exception from
+    the SDK (rate-limit, auth, network), the next key is tried. Raises
+    the LAST error if every key fails.
+    """
     import anyio
-    resp = await anyio.to_thread.run_sync(
-        lambda: model.generate_content(nl_query.strip())
-    )
-    text = resp.text or ""
-    return text.strip()
+
+    text_prompt = nl_query.strip()
+    model = _get_model()
+    settings = get_settings()
+    total_keys = len(settings.gemini_api_keys_list)
+    attempts = 0
+    last_exc: Optional[Exception] = None
+
+    while attempts < max(1, total_keys):
+        try:
+            resp = await anyio.to_thread.run_sync(
+                lambda m=model: m.generate_content(text_prompt)
+            )
+            return (resp.text or "").strip()
+        except Exception as e:
+            last_exc = e
+            log.warning(
+                "gemini call failed on key index %d (%s): %s",
+                _ACTIVE_KEY_INDEX,
+                _mask(settings.gemini_api_keys_list[_ACTIVE_KEY_INDEX])
+                if total_keys else "<none>",
+                str(e)[:200],
+            )
+            next_model = _rotate_to_next_key()
+            if next_model is None:
+                break
+            model = next_model
+            attempts += 1
+
+    assert last_exc is not None
+    raise last_exc
 
 
 def usage_from_response(resp) -> Optional[dict]:  # kept for future observability

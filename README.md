@@ -185,7 +185,7 @@ npm run dev                       # http://localhost:3000
 | `JWT_SECRET`              | `<random 32-byte hex>`                                  | `openssl rand -hex 32`         |
 | `JWT_ALGORITHM`           | `HS256`                                                 |                                |
 | `ACCESS_TOKEN_EXPIRE_MIN` | `60`                                                    |                                |
-| `GEMINI_API_KEY`          | `AIza...`                                               | free at aistudio.google.com    |
+| `GEMINI_API_KEY`          | `AIza...` or `AIzaKey1,AIzaKey2,...`                    | free at aistudio.google.com. Comma-separated fallback keys — rotates on quota / auth / network errors. |
 | `CORS_ORIGINS`            | `http://localhost:3000,https://<vercel-domain>`         | comma-separated                |
 | `ENVIRONMENT`             | `development` / `production`                            |                                |
 

@@ -62,8 +62,16 @@ class Settings(BaseSettings):
     refresh_token_expire_days: int = 7
 
     # --- Gemini ---
+    # `gemini_api_key` accepts either a single key or a comma-separated
+    # list. The service tries them in order and falls over to the next
+    # on 429 / 5xx / auth errors so a single revoked or rate-limited
+    # key doesn't take the assistant down.
     gemini_api_key: str = ""
     gemini_model: str = "gemini-2.5-flash"
+
+    @property
+    def gemini_api_keys_list(self) -> List[str]:
+        return [k.strip() for k in self.gemini_api_key.split(",") if k.strip()]
 
     # --- Seed ---
     seed_scale: str = "full"
