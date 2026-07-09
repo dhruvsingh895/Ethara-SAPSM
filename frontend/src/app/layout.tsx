@@ -7,8 +7,8 @@ import { ThemeProvider } from "@/lib/theme-context";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Ethara SAPSM",
-  description: "Seat Allocation & Project Mapping System",
+  title: "Ethara Seat Allocation & Project Mapping System",
+  description: "Manage seat allocation, project mapping, and new-joiner onboarding.",
 };
 
 // Runs before React hydrates so the correct theme class is on <html>.

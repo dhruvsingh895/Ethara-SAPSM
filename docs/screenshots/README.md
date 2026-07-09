@@ -6,7 +6,7 @@ Captured from the live deployment at https://ethara-sapsm.vercel.app running aga
 | --- | --- | --- |
 | 1 | [`01-login.png`](01-login.png) | Login page with brand mark, show-password toggle, and dark-mode switch. Credentials are handed out separately in the [User Guide](../USER_GUIDE.md). |
 | 2 | [`02-dashboard-top.png`](02-dashboard-top.png) | Dashboard top — the 4 primary stat cards (Occupancy 80%, 4,999 active employees, 50 joiners in 30 days, 24 active projects), the seat-status donut, and the Top Departments horizontal bar chart. |
-| 3 | [`03-dashboard-utilization.png`](03-dashboard-utilization.png) | Dashboard bottom — Occupancy-by-floor stacked bars (15 columns: 3 buildings × 5 floors) and the Top Project Utilization table, colour-coded and capped at 100%. |
+| 3 | [`03-dashboard-utilization.png`](03-dashboard-utilization.png) | Dashboard bottom — Occupancy-by-floor stacked bars (10 columns: 2 buildings × 5 floors) and the Top Project Utilization table, colour-coded and capped at 100%. |
 | 4 | [`04-seats-floor-plan.png`](04-seats-floor-plan.png) | Interactive seat map — B1 Floor 1 with 200 seats laid out by zone, per-status colour coding, filter chips, and a Selection panel showing an occupant plus admin-only "Change status" / "Delete" controls. |
 | 5 | [`05-new-joiner-wizard.png`](05-new-joiner-wizard.png) | New Joiner flow — 3-step wizard mid-flow. Step 1 (create or reuse employee), Step 2 (department + optional project), Step 3 (suggested seats ranked by fewest-vacancies-first packing). |
 | 6 | [`06-ai-assistant.png`](06-ai-assistant.png) | AI Assistant chat — a natural-language query answered with the count plus a collapsible Generated SQL disclosure, prior history with "Ask again" buttons, and the admin-only "Show all users" toggle. |

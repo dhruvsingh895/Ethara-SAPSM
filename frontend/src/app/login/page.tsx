@@ -86,7 +86,7 @@ function LoginForm() {
             <Logo size={56} priority />
           </div>
           <h1 className="mt-4 text-2xl font-semibold tracking-tight">
-            Welcome to Ethara SAPSM
+            Welcome to Ethara Seat Allocation &amp; Project Mapping System
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Sign in to manage seats, projects, and people.
@@ -188,7 +188,7 @@ function LoginForm() {
         </div>
 
         <p className="text-center text-[11px] text-muted-foreground">
-          Ethara SAPSM · v0.1.0
+          Ethara Seat Allocation &amp; Project Mapping System · v0.1.0
         </p>
       </div>
     </main>

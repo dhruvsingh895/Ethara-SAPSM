@@ -14,7 +14,7 @@ The API response also carries the spec-aliased fields `name` (computed from `fir
 Physical desks. Unique `seat_code` like `B2-F3-ZE-S045`. Columns: `building`, `floor`, `zone`, `bay`, `seat_number`, `status`.
 
 - `status` ∈ `available | occupied | reserved | maintenance` (spec §3.3).
-- 12 distinct zone codes across the estate: `ZA..ZD` in B1, `ZE..ZH` in B2, `ZI..ZL` in B3 (satisfies spec §6 ≥10 zones).
+- 10 distinct zone codes across the estate: `ZA..ZE` in B1, `ZF..ZJ` in B2 (exactly meets spec §6 ≥10 zones).
 - `bay` groups seats within a zone into physical clusters (`BAY-1..BAY-4`).
 - Unique composite index on `(building, floor, zone, seat_number)` enforces spec §8.7: no duplicate seat number on the same floor/zone.
 - API responses (`SeatOut`) also embed the current active allocation as `allocated_employee_id`, `allocated_project_id`, and `allocation_date` (spec §3.3), sourced from the join with `seat_allocations`.
@@ -57,14 +57,14 @@ Canonical department list — used by every dropdown in the app. Renamed rows ca
 | `users`               | 4       | —            |
 | `employees` (active)  | 5,000   | ≥ 5,000      |
 | `employees` (exited)  | 300     | —            |
-| `seats`               | 6,000   | ≥ 5,500      |
-| `seats` available     | ~900    | ≥ 500        |
-| `seats` reserved      | ~180    | ≥ 100        |
-| Unallocated actives   | ~200    | ≥ 50         |
+| `seats`               | 5,500   | ≥ 5,500      |
+| `seats` available     | 825     | ≥ 500        |
+| `seats` reserved      | 165     | ≥ 100        |
+| Unallocated actives   | 600     | ≥ 50         |
 | `projects`            | 30      | ≥ 10 (11 spec-named + 19 generated) |
-| `distinct zones`      | 12      | ≥ 10         |
-| `project_assignments` | ~4,700  | —            |
-| `seat_allocations`    | ~4,800  | —            |
+| `distinct zones`      | 10      | ≥ 10         |
+| `project_assignments` | ~4,470  | —            |
+| `seat_allocations`    | 4,400   | —            |
 
 Seat status distribution: **80% occupied / 15% available / 3% reserved / 2% maintenance**.
 

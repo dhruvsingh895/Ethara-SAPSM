@@ -26,7 +26,7 @@ class Settings(BaseSettings):
 
     # --- App ---
     environment: str = "development"
-    app_name: str = "Ethara SAPSM"
+    app_name: str = "Ethara Seat Allocation & Project Mapping System"
     api_v1_prefix: str = "/api/v1"
     log_level: str = "INFO"
 

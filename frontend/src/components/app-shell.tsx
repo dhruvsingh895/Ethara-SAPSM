@@ -117,7 +117,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <Logo size={28} priority />
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold tracking-tight">
-            Ethara SAPSM
+            Ethara Seat Allocation &amp; Project Mapping System
           </p>
         </div>
         <button
@@ -228,7 +228,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-2 md:hidden">
             <Logo size={22} />
             <span className="text-sm font-semibold tracking-tight">
-              Ethara SAPSM
+              Ethara Seat Allocation &amp; Project Mapping System
             </span>
           </div>
 

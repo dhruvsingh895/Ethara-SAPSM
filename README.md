@@ -1,4 +1,4 @@
-# Ethara SAPSM — Seat Allocation & Project Mapping System
+# Ethara Seat Allocation & Project Mapping System
 
 ![Dashboard](docs/screenshots/02-dashboard-top.png)
 
@@ -194,7 +194,7 @@ npm run dev                       # http://localhost:3000
 | Var                    | Example                             |
 | ---------------------- | ----------------------------------- |
 | `NEXT_PUBLIC_API_URL`  | `http://localhost:8000`             |
-| `NEXT_PUBLIC_APP_NAME` | `Ethara SAPSM`                      |
+| `NEXT_PUBLIC_APP_NAME` | `Ethara Seat Allocation & Project Mapping System` |
 
 ---
 
@@ -223,18 +223,18 @@ The seed generator produces a realistic dataset that satisfies every minimum in 
 | --------------------------------------------- | --------------: | :-----: |
 | 5,000 employees                               |           5,000 |    ✓    |
 | Min 5 floors                                  |               5 |    ✓    |
-| Min 10 zones                                  |              12 |    ✓    |
-| Min 5,500 seats                               |           6,000 |    ✓    |
+| Min 10 zones                                  |              10 |    ✓    |
+| Min 5,500 seats                               |           5,500 |    ✓    |
 | Min 10 projects                               |              30 |    ✓    |
-| At least 500 available seats                  |             900 |    ✓    |
-| At least 100 reserved seats                   |             180 |    ✓    |
-| At least 50 employees pending allocation      |             200 |    ✓    |
+| At least 500 available seats                  |             825 |    ✓    |
+| At least 100 reserved seats                   |             165 |    ✓    |
+| At least 50 employees pending allocation      |             600 |    ✓    |
 
 Extras beyond spec:
 
-- **8 departments** with realistic headcount ratios (Engineering 35%, Product 10%, etc.)
-- **11 spec-named projects** (Indigo, Indreed, Mydreed, Preed, Serfy, Oreed, bedegreed, Opreed, Serry, Kaary, Mered) as `PRJ001..PRJ011`; 19 generated names padding to 30.
-- **Seat layout** — 3 buildings × 5 floors × 4 zones × 100 seats = 6,000. Zones `ZA..ZL`; bays `BAY-1..BAY-4`.
+- **9 departments** with realistic headcount ratios (Engineering 35%, Product 10%, etc.)
+- **11 spec-named projects** (Indigo, Indreed, Mydreed, Preed, Serfy, Oreed, bedegreed, Opreed, Serry, Kaary, Mered) as `PRJ001..PRJ011` — all ACTIVE; 19 generated names padding to 30.
+- **Seat layout** — 2 buildings × 5 floors × 5 zones × 110 seats = 5,500 (sits exactly at the spec §6 floor). Zones `ZA..ZJ`; bays `BAY-1..BAY-4`.
 - **Occupancy** ~80% occupied / 15% available / 3% reserved / 2% maintenance.
 - **4 pre-created users** — one per role (`admin`, `hr`, `pm`, `employee`) with password `demo1234` for grading.
 - Seed script logs a `SPEC MINIMUM MISSED` warning if any full-scale run drops below the spec — so misconfiguration surfaces immediately.

@@ -179,7 +179,7 @@ export default function DashboardPage() {
           <div>
             <p className="text-sm font-medium">Seat status</p>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              Distribution across all 6,000 seats
+              Distribution across all 5,500 seats
             </p>
           </div>
           <div className="mt-4 flex-1" style={{ minHeight: 260 }}>
@@ -271,7 +271,7 @@ export default function DashboardPage() {
         <div>
           <p className="text-sm font-medium">Occupancy by floor</p>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Occupied vs available seats — 3 buildings × 5 floors
+            Occupied vs available seats — 2 buildings × 5 floors
           </p>
         </div>
         <div className="mt-4" style={{ height: 300 }}>

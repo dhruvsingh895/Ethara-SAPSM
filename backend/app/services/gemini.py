@@ -40,9 +40,9 @@ CREATE TABLE employees (
 CREATE TABLE seats (
     id           SERIAL PRIMARY KEY,
     seat_code    VARCHAR(32) UNIQUE,         -- e.g. 'B2-F3-ZE-S045'
-    building     VARCHAR(16),                -- 'B1' | 'B2' | 'B3'
+    building     VARCHAR(16),                -- 'B1' | 'B2'
     floor        INT,                        -- 1..5
-    zone         VARCHAR(16),                -- 'ZA'..'ZL' (4 per building × 3 buildings = 12 total, uppercase)
+    zone         VARCHAR(16),                -- 'ZA'..'ZJ' (5 per building × 2 buildings = 10 total, uppercase)
     bay          VARCHAR(16),                -- 'BAY-1'..'BAY-4' cluster within a zone
     seat_number  INT,
     status       VARCHAR(32)                 -- UPPERCASE: 'AVAILABLE' | 'OCCUPIED' | 'RESERVED' | 'MAINTENANCE'
@@ -79,7 +79,7 @@ CREATE TABLE seat_allocations (
 );
 """
 
-_SYSTEM_PROMPT = """You are a read-only SQL analyst for the Ethara SAPSM (Seat Allocation & Project Mapping System) Postgres database.
+_SYSTEM_PROMPT = """You are a read-only SQL analyst for the Ethara Seat Allocation & Project Mapping System Postgres database.
 
 Rules:
 1. Return a SINGLE valid Postgres SELECT statement.

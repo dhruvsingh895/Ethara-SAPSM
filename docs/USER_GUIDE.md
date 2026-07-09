@@ -1,4 +1,4 @@
-# Ethara SAPSM — User Guide
+# Ethara Seat Allocation & Project Mapping System — User Guide
 
 A walkthrough of every page in the app, what each role can do on it, and how to complete the common workflows an evaluator might want to try.
 
@@ -83,7 +83,7 @@ The landing page after login. It's a live snapshot — every widget hits the dat
 
 **Bottom row:**
 
-- **Occupancy by floor** — stacked bar per floor across all 3 buildings × 5 floors (15 columns). Occupied is blue, available is green, reserved/maintenance is grey.
+- **Occupancy by floor** — stacked bar per floor across both buildings × 5 floors (10 columns). Occupied is blue, available is green, reserved/maintenance is grey.
 - **Top project utilization** — active members ÷ required seats, capped at 100%. The percentage pill is colour-coded on a 5-band scale so the table reads like a real gradient: **red** for over-allocated (shows an extra `+N over` badge), **amber** at ≥95% (at capacity, tight), **emerald** in the 70–94% healthy zone, **lime** for 40–69% building-up, and **amber** again below 40% (under-staffed).
 
 Hover any chart segment to see exact values in a tooltip.
@@ -118,7 +118,7 @@ Browse and search the full workforce. The filters at the top are all live — ch
 
 ![Seats floor plan](screenshots/04-seats-floor-plan.png)
 
-An interactive floor plan. Pick a **Building** (B1/B2/B3), a **Floor** (F1..F5), and optionally a **Status** filter — the grid re-renders instantly with per-status colour coding (available green, occupied blue, reserved amber, maintenance red).
+An interactive floor plan. Pick a **Building** (B1 or B2), a **Floor** (F1..F5), and optionally a **Status** filter — the grid re-renders instantly with per-status colour coding (available green, occupied blue, reserved amber, maintenance red).
 
 Click any seat to open the **Selection** panel on the right:
 
@@ -126,7 +126,7 @@ Click any seat to open the **Selection** panel on the right:
 - If occupied: the current occupant's name, department, and since-date.
 - **Admin actions** (admin only): change the seat's status (mark as maintenance, reserve, or free it back to available), or delete the seat entirely. Deleting is guarded — you can't delete a seat while someone is actively sitting in it; release the allocation first.
 
-The layout is the real physical grid used by the seed data: 3 buildings × 5 floors × 4 zones × 100 seats = 6,000 seats. Zone codes span `ZA..ZL` (four zones per building × three buildings = 12 total, satisfying spec §6's "min 10 zones"). Each zone is split into 4 physical bays (BAY-1..BAY-4). The seat code (`B1-F3-ZA-S045`) encodes building / floor / zone / seat-number; the bay label is shown separately in the Selection panel.
+The layout is the real physical grid used by the seed data: 2 buildings × 5 floors × 5 zones × 110 seats = **5,500 seats** — sitting exactly at spec §6's floor of 5,500. Zone codes span `ZA..ZJ` (five zones per building × two buildings = 10 total, exactly the spec §6 "min 10 zones"). Each zone is split into 4 physical bays (BAY-1..BAY-4). The seat code (`B1-F3-ZA-S045`) encodes building / floor / zone / seat-number; the bay label is shown separately in the Selection panel.
 
 ---
 

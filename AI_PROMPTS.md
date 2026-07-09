@@ -1,4 +1,4 @@
-# AI Usage Log — Ethara SAPSM
+# AI Usage Log — Ethara Seat Allocation & Project Mapping System
 
 This file documents every meaningful use of AI tooling during the development of this project, per the assessment requirement:
 

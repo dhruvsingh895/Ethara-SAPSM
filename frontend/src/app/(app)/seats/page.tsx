@@ -17,7 +17,7 @@ import type {
   SeatStatusValue,
 } from "@/lib/types";
 
-const BUILDINGS = ["B1", "B2", "B3"];
+const BUILDINGS = ["B1", "B2"];
 const FLOORS = [1, 2, 3, 4, 5];
 const STATUS_OPTIONS: (SeatStatusValue | "")[] = [
   "",
