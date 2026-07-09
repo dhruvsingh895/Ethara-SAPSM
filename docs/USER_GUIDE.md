@@ -33,7 +33,9 @@ A walkthrough of every page in the app, what each role can do on it, and how to 
 
 ![Login](screenshots/01-login.png)
 
-Go to the login page and enter one of the seeded credentials below. Use the eye icon to reveal the password if you'd like to double-check what you typed. The dark-mode switch in the top-right toggles the theme; the app remembers your choice.
+Go to the login page. For your convenience the form is prefilled with `admin` / `demo1234` and the "Demo accounts" panel below the sign-in button shows all four seeded roles as clickable chips — click any chip to swap the username in place. Use the eye icon to reveal the password if you'd like to double-check what you typed. The dark-mode switch in the top-right toggles the theme; the app remembers your choice.
+
+> **Note.** The prefill and the demo-accounts panel are an assessment-only convenience (there's a small disclaimer on the card itself). In a real production build they would be removed — accounts would instead be handed out via the admin **Users** page.
 
 **Demo credentials** (all share the same password):
 

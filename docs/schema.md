@@ -24,11 +24,15 @@ Business projects with a `code`, `name`, `client`, `pm_id`, `required_seats`, an
 
 Seed data uses the 11 exact project names named in spec §3.2 (Indigo, Indreed, Mydreed, Preed, Serfy, Oreed, bedegreed, Opreed, Serry, Kaary, Mered) for `PRJ001..PRJ011`, then generated names to pad up to the seed target.
 
+Spec §7 names the project-manager column `manager_name` (a string). Ours is `pm_id` — a nullable FK into `employees(id)` — so the manager stays consistent when an employee is renamed, and joins are cheap. The API's `ProjectOut` exposes `pm_id`; the frontend fetches the employee row to render the name.
+
 ### `project_assignments`
 M2M join between employees and projects, with `role`, `allocation_pct` (0-100), `start_date`, and optional `end_date`.
 
 ### `seat_allocations`
 Full history of who sat where. A row with `released_at IS NULL` is currently active. Composite indexes on `(seat_id, released_at)` and `(employee_id, released_at)` make active-lookup queries O(log n).
+
+Spec §7 also lists a `project_id` on `seat_allocations`. We chose not to denormalise the project onto the allocation because an employee's project can change *during* an active seat allocation — storing it here would go stale. Instead the current project is read from `employees.current_project_id` at query time, and the historical project (at the moment the allocation was made) is recoverable from the audit log.
 
 ### `audit_log`
 Append-only trail for mutations. `action` is a typed enum covering allocation events, project changes, and employee edits. Includes `maintenance` (renamed from `block` in migration `a2f4c81b5e07` to match spec vocabulary).

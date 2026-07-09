@@ -217,15 +217,29 @@ Migrations live in `backend/alembic/versions/`.
 
 ## Seed Data
 
-The seed generator produces a realistic dataset:
+The seed generator produces a realistic dataset that satisfies every minimum in spec §6. Verified against live prod:
 
-- **5,000 employees** across 8 departments, distributed by realistic ratios.
-- **~30 projects** with 2–200 assignees each.
-- **~6,000 seats** across **3 buildings × 5 floors × 4 zones**.
-- **~80% occupied, ~15% vacant, ~5% reserved / blocked**.
+| Spec §6 requirement                           | Live prod value | Verdict |
+| --------------------------------------------- | --------------: | :-----: |
+| 5,000 employees                               |           5,000 |    ✓    |
+| Min 5 floors                                  |               5 |    ✓    |
+| Min 10 zones                                  |              12 |    ✓    |
+| Min 5,500 seats                               |           6,000 |    ✓    |
+| Min 10 projects                               |              30 |    ✓    |
+| At least 500 available seats                  |             900 |    ✓    |
+| At least 100 reserved seats                   |             180 |    ✓    |
+| At least 50 employees pending allocation      |             200 |    ✓    |
+
+Extras beyond spec:
+
+- **8 departments** with realistic headcount ratios (Engineering 35%, Product 10%, etc.)
+- **11 spec-named projects** (Indigo, Indreed, Mydreed, Preed, Serfy, Oreed, bedegreed, Opreed, Serry, Kaary, Mered) as `PRJ001..PRJ011`; 19 generated names padding to 30.
+- **Seat layout** — 3 buildings × 5 floors × 4 zones × 100 seats = 6,000. Zones `ZA..ZL`; bays `BAY-1..BAY-4`.
+- **Occupancy** ~80% occupied / 15% available / 3% reserved / 2% maintenance.
 - **4 pre-created users** — one per role (`admin`, `hr`, `pm`, `employee`) with password `demo1234` for grading.
+- Seed script logs a `SPEC MINIMUM MISSED` warning if any full-scale run drops below the spec — so misconfiguration surfaces immediately.
 
-Run: `python -m app.seed`. Idempotent — safe to re-run.
+Run: `python -m app.seed` (or `--wipe` to reset first). Idempotent otherwise — safe to re-run.
 
 ---
 
@@ -239,17 +253,23 @@ FastAPI auto-generates OpenAPI. Once the backend is running:
 
 Key routes:
 
-| Method | Path                                | Purpose                               |
-| ------ | ----------------------------------- | ------------------------------------- |
-| POST   | `/auth/login`                       | Get JWT                               |
-| GET    | `/employees`                        | List, filter, paginate                |
-| POST   | `/employees`                        | Create (HR/Admin)                     |
-| GET    | `/seats/available`                  | List free seats                       |
-| POST   | `/allocations`                      | Allocate a seat                       |
-| POST   | `/allocations/{id}/release`         | Release a seat                       |
-| POST   | `/new-joiner/suggest`               | Suggest a seat for a joiner          |
-| GET    | `/dashboard/occupancy`              | Occupancy metrics                    |
-| POST   | `/api/v1/ai/query`                  | Natural-language query               |
+| Method | Path                                | Purpose                                    |
+| ------ | ----------------------------------- | ------------------------------------------ |
+| POST   | `/auth/login`                       | Get JWT                                    |
+| GET    | `/employees`                        | List, filter, paginate                     |
+| POST   | `/employees`                        | Create (HR/Admin)                          |
+| PUT    | `/employees/{id}`                   | Update (HR/Admin) — spec §5 shape          |
+| GET    | `/projects/{id}/employees`          | Members of a project (spec §5)             |
+| GET    | `/seats/available`                  | List free seats                            |
+| POST   | `/seats/allocate`                   | Allocate a seat (spec §5 shape)            |
+| POST   | `/seats/release`                    | Release a seat by `seat_id` (spec §5)      |
+| POST   | `/new-joiner/suggest`               | Suggest a seat for a joiner                |
+| GET    | `/dashboard/summary`                | Totals + KPIs blob (spec §3.6)             |
+| GET    | `/dashboard/project-utilization`    | Project-wise allocation (spec §5)          |
+| GET    | `/dashboard/floor-utilization`      | Floor-wise occupancy (spec §5)             |
+| POST   | `/ai/query`                         | Natural-language query, returns `answer`   |
+
+Full compliance matrix (every spec-required path + alias): see the [Spec Endpoint Compliance](#spec-endpoint-compliance) table below.
 
 ---
 
