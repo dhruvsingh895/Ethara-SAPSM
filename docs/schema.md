@@ -17,6 +17,7 @@ Physical desks. Unique `seat_code` like `B2-F3-ZE-S045`. Columns: `building`, `f
 - 12 distinct zone codes across the estate: `ZA..ZD` in B1, `ZE..ZH` in B2, `ZI..ZL` in B3 (satisfies spec §6 ≥10 zones).
 - `bay` groups seats within a zone into physical clusters (`BAY-1..BAY-4`).
 - Unique composite index on `(building, floor, zone, seat_number)` enforces spec §8.7: no duplicate seat number on the same floor/zone.
+- API responses (`SeatOut`) also embed the current active allocation as `allocated_employee_id`, `allocated_project_id`, and `allocation_date` (spec §3.3), sourced from the join with `seat_allocations`.
 
 ### `projects`
 Business projects with a `code`, `name`, `client`, `pm_id`, `required_seats`, and lifecycle `status` (`active | on_hold | completed`).

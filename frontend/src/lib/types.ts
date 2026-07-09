@@ -57,6 +57,11 @@ export interface Seat {
   seat_number: number;
   status: SeatStatusValue;
   notes?: string | null;
+  /** Spec §3.3: currently allocated employee, null when the seat is free. */
+  allocated_employee_id?: number | null;
+  allocated_project_id?: number | null;
+  /** ISO timestamp of the active allocation. */
+  allocation_date?: string | null;
 }
 
 export interface Project {

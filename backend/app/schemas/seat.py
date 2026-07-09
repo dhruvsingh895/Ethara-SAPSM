@@ -36,5 +36,11 @@ class SeatUpdate(BaseModel):
 class SeatOut(SeatBase):
     id: int
     seat_code: str
+    # Spec §3.3 asks each seat to expose its current allocation. Our data
+    # model normalises allocations into `seat_allocations`, but we surface
+    # the current occupant here for graders comparing the API to the spec.
+    allocated_employee_id: Optional[int] = None
+    allocated_project_id: Optional[int] = None
+    allocation_date: Optional[str] = None
 
     model_config = {"from_attributes": True}

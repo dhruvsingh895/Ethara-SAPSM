@@ -31,6 +31,58 @@ from app.services import audit
 router = APIRouter(prefix="/seats", tags=["seats"])
 
 
+async def _seat_out_with_allocation(
+    db: AsyncSession, seats: list[Seat]
+) -> list[SeatOut]:
+    """Build SeatOut payloads with the active-allocation fields populated
+    for occupied seats. Spec §3.3 asks each seat to expose its currently
+    allocated employee, project, and allocation date; we source that from
+    the active row in seat_allocations plus employees.current_project_id
+    (denormalised on the employee).
+    """
+    from app.models.employee import Employee as _Employee
+
+    seat_ids = [s.id for s in seats if s.status == SeatStatus.OCCUPIED]
+    active_map: dict[int, tuple[int, str]] = {}
+    proj_map: dict[int, Optional[int]] = {}
+    if seat_ids:
+        rows = (
+            await db.execute(
+                select(
+                    SeatAllocation.seat_id,
+                    SeatAllocation.employee_id,
+                    SeatAllocation.allocated_at,
+                )
+                .where(SeatAllocation.seat_id.in_(seat_ids))
+                .where(SeatAllocation.released_at.is_(None))
+            )
+        ).all()
+        for sid, eid, allocated_at in rows:
+            active_map[sid] = (eid, allocated_at.isoformat())
+        emp_ids = [eid for eid, _ in active_map.values()]
+        if emp_ids:
+            emp_rows = (
+                await db.execute(
+                    select(_Employee.id, _Employee.current_project_id).where(
+                        _Employee.id.in_(emp_ids)
+                    )
+                )
+            ).all()
+            proj_map = {eid: pid for eid, pid in emp_rows}
+
+    out: list[SeatOut] = []
+    for s in seats:
+        payload = SeatOut.model_validate(s)
+        active = active_map.get(s.id)
+        if active is not None:
+            emp_id, allocated_at = active
+            payload.allocated_employee_id = emp_id
+            payload.allocated_project_id = proj_map.get(emp_id)
+            payload.allocation_date = allocated_at
+        out.append(payload)
+    return out
+
+
 @router.get("", response_model=Page[SeatOut], summary="List seats")
 async def list_seats(
     page: PageParams = Depends(),
@@ -66,7 +118,7 @@ async def list_seats(
     items = (await db.execute(stmt)).scalars().all()
 
     return Page[SeatOut](
-        items=[SeatOut.model_validate(s) for s in items],
+        items=await _seat_out_with_allocation(db, list(items)),
         total=total,
         limit=page.limit,
         offset=page.offset,
@@ -106,7 +158,7 @@ async def list_available(
     items = (await db.execute(stmt)).scalars().all()
 
     return Page[SeatOut](
-        items=[SeatOut.model_validate(s) for s in items],
+        items=await _seat_out_with_allocation(db, list(items)),
         total=total,
         limit=page.limit,
         offset=page.offset,
@@ -196,7 +248,8 @@ async def get_seat(
     seat = await db.get(Seat, seat_id)
     if seat is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Seat not found")
-    return SeatOut.model_validate(seat)
+    out = await _seat_out_with_allocation(db, [seat])
+    return out[0]
 
 
 @router.post(
