@@ -8,11 +8,14 @@ import { Field, Select } from "@/components/input";
 import { Badge, Card, PageHeader } from "@/components/ui";
 import { ApiError, apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { useDepartments } from "@/lib/use-departments";
+import { useProjects } from "@/lib/use-projects";
 import { cn } from "@/lib/utils";
 import type {
   Allocation,
   Employee,
   Page,
+  Project,
   Seat,
   SeatStatusValue,
 } from "@/lib/types";
@@ -49,10 +52,18 @@ export default function SeatsPage() {
   const [building, setBuilding] = useState("B1");
   const [floor, setFloor] = useState(1);
   const [status, setStatus] = useState<SeatStatusValue | "">("");
+  const [department, setDepartment] = useState("");
+  const [projectId, setProjectId] = useState<string>("");
   const [data, setData] = useState<Seat[]>([]);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [selected, setSelected] = useState<Seat | null>(null);
+  // Set of seat IDs that match the department highlight (built from a
+  // secondary employee-lookup). Empty set = no dept filter active.
+  const [deptSeatIds, setDeptSeatIds] = useState<Set<number>>(new Set());
+
+  const { departments } = useDepartments();
+  const { projects } = useProjects();
 
   const query = useMemo(() => {
     const p = new URLSearchParams({
@@ -75,6 +86,36 @@ export default function SeatsPage() {
       .finally(() => setLoading(false));
   }, [query]);
 
+  // When the department filter changes, look up every employee in that
+  // department and remember which seat IDs they occupy. The seat map
+  // then rings those seats. Empty department = no highlight.
+  useEffect(() => {
+    if (!department) {
+      setDeptSeatIds(new Set());
+      return;
+    }
+    const params = new URLSearchParams({
+      limit: "1000",
+      offset: "0",
+      department,
+      status: "active",
+    });
+    let cancelled = false;
+    apiFetch<Page<Employee>>(`/api/v1/employees?${params.toString()}`)
+      .then((page) => {
+        if (cancelled) return;
+        const ids = new Set<number>();
+        for (const e of page.items) {
+          if (e.current_seat_id != null) ids.add(e.current_seat_id);
+        }
+        setDeptSeatIds(ids);
+      })
+      .catch(() => setDeptSeatIds(new Set()));
+    return () => {
+      cancelled = true;
+    };
+  }, [department]);
+
   const byZone = useMemo(() => {
     const groups: Record<string, Seat[]> = {};
     for (const s of data) {
@@ -86,6 +127,25 @@ export default function SeatsPage() {
     }
     return groups;
   }, [data]);
+
+  const highlightActive = department !== "" || projectId !== "";
+
+  function isHighlighted(seat: Seat): boolean {
+    if (!highlightActive) return false;
+    // Project match — read straight off the seat payload.
+    if (projectId && String(seat.allocated_project_id ?? "") === projectId) {
+      return true;
+    }
+    // Department match — from the secondary employee lookup.
+    if (department && deptSeatIds.has(seat.id)) return true;
+    return false;
+  }
+
+  const highlightCount = useMemo(
+    () => (highlightActive ? data.filter(isHighlighted).length : 0),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [data, department, projectId, deptSeatIds],
+  );
 
   return (
     <div className="space-y-6">
@@ -138,6 +198,36 @@ export default function SeatsPage() {
               ))}
             </Select>
           </Field>
+          <Field label="Highlight dept" htmlFor="seat-dept">
+            <Select
+              id="seat-dept"
+              value={department}
+              onChange={(e) => setDepartment(e.target.value)}
+              className="w-40"
+            >
+              <option value="">Any department</option>
+              {departments.map((d) => (
+                <option key={d.id} value={d.name}>
+                  {d.name}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="Highlight project" htmlFor="seat-project">
+            <Select
+              id="seat-project"
+              value={projectId}
+              onChange={(e) => setProjectId(e.target.value)}
+              className="w-44"
+            >
+              <option value="">Any project</option>
+              {projects.map((p) => (
+                <option key={p.id} value={String(p.id)}>
+                  {p.code} · {p.name}
+                </option>
+              ))}
+            </Select>
+          </Field>
 
           <div className="ml-auto flex flex-wrap items-center gap-3 text-xs">
             {LEGEND.map((l) => (
@@ -167,7 +257,11 @@ export default function SeatsPage() {
                 {building} · Floor {floor}
               </p>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                {loading ? "Loading…" : `${data.length} seats`}
+                {loading
+                  ? "Loading…"
+                  : highlightActive
+                    ? `${data.length} seats · ${highlightCount} highlighted`
+                    : `${data.length} seats`}
               </p>
             </div>
           </div>
@@ -178,23 +272,33 @@ export default function SeatsPage() {
                 <div key={zone}>
                   <p className="label-cap mb-2">Zone {zone}</p>
                   <div className="flex flex-wrap gap-1.5">
-                    {byZone[zone].map((seat) => (
-                      <button
-                        key={seat.id}
-                        type="button"
-                        onClick={() => setSelected(seat)}
-                        title={`${seat.seat_code} — ${seat.status}`}
-                        className={cn(
-                          "flex h-8 w-9 items-center justify-center rounded-md text-[10px] font-mono font-medium transition",
-                          SEAT_CLS[seat.status],
-                          selected?.id === seat.id
-                            ? "ring-2 ring-primary ring-offset-2 ring-offset-background"
-                            : "",
-                        )}
-                      >
-                        {seat.seat_number}
-                      </button>
-                    ))}
+                    {byZone[zone].map((seat) => {
+                      const matched = isHighlighted(seat);
+                      return (
+                        <button
+                          key={seat.id}
+                          type="button"
+                          onClick={() => setSelected(seat)}
+                          title={`${seat.seat_code} — ${seat.status}`}
+                          className={cn(
+                            "flex h-8 w-9 items-center justify-center rounded-md text-[10px] font-mono font-medium transition",
+                            SEAT_CLS[seat.status],
+                            // Highlight ring on matches; dim non-matches
+                            // when a highlight filter is active.
+                            matched
+                              ? "ring-2 ring-fuchsia-500 ring-offset-1 ring-offset-background"
+                              : highlightActive
+                                ? "opacity-25"
+                                : "",
+                            selected?.id === seat.id
+                              ? "ring-2 ring-primary ring-offset-2 ring-offset-background"
+                              : "",
+                          )}
+                        >
+                          {seat.seat_number}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               ))}
@@ -244,11 +348,21 @@ function SelectionPanel({
 }) {
   const { hasRole } = useAuth();
   const isAdmin = hasRole("admin");
+  const { projects } = useProjects();
 
   const [occupant, setOccupant] = useState<Employee | null>(null);
   const [allocatedAt, setAllocatedAt] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [notFound, setNotFound] = useState(false);
+
+  // Resolve occupant.current_project_id against the cached projects list
+  // so we don't fire an extra fetch per click.
+  const occupantProject: Project | null = useMemo(() => {
+    if (!occupant?.current_project_id) return null;
+    return (
+      projects.find((p) => p.id === occupant.current_project_id) ?? null
+    );
+  }, [occupant, projects]);
 
   useEffect(() => {
     setOccupant(null);
@@ -323,6 +437,22 @@ function SelectionPanel({
               <p className="text-xs text-muted-foreground">
                 {occupant.designation} · {occupant.department}
               </p>
+              {occupantProject ? (
+                <p className="text-xs text-muted-foreground">
+                  Project:{" "}
+                  <Link
+                    href={`/projects/${occupantProject.id}`}
+                    className="text-primary hover:underline"
+                  >
+                    {occupantProject.name}
+                  </Link>{" "}
+                  <span className="font-mono">({occupantProject.code})</span>
+                </p>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Project: <span className="italic">unassigned</span>
+                </p>
+              )}
               {allocatedAt && (
                 <p className="mt-1 text-xs text-muted-foreground">
                   Since {new Date(allocatedAt).toLocaleDateString()}
