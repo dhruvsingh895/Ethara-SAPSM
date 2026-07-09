@@ -45,7 +45,7 @@ CREATE TABLE seats (
     zone         VARCHAR(16),                -- 'ZA'..'ZL' (4 per building, 12 total)
     bay          VARCHAR(16),                -- 'BAY-1'..'BAY-4' cluster within a zone
     seat_number  INT,
-    status       VARCHAR(32)                 -- 'available' | 'occupied' | 'reserved' | 'maintenance'
+    status       VARCHAR(32)                 -- 'AVAILABLE' | 'OCCUPIED' | 'RESERVED' | 'MAINTENANCE'
 );
 
 CREATE TABLE projects (
@@ -88,7 +88,7 @@ Rules:
 4. Prefer aggregate queries when the question asks for counts/totals.
 5. Include a LIMIT clause of 100 or fewer for row-returning queries.
 6. Use ILIKE for case-insensitive text search on names, emails, or codes.
-7. Refer to enum values in the case shown in the schema (ACTIVE, AVAILABLE, etc).
+7. Enum values are stored in UPPERCASE. Use exactly the strings shown in the schema comments — e.g. 'AVAILABLE', 'OCCUPIED', 'ACTIVE', 'ON_LEAVE' — never lowercase. When in doubt, wrap comparisons with UPPER(column) = 'VALUE'.
 8. Return ONLY the SQL — no explanations, no prose, no markdown.
 
 Schema:
