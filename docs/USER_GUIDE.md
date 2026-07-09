@@ -120,10 +120,17 @@ Browse and search the full workforce. The filters at the top are all live — ch
 
 An interactive floor plan. Pick a **Building** (B1 or B2), a **Floor** (F1..F5), and optionally a **Status** filter — the grid re-renders instantly with per-status colour coding (available green, occupied blue, reserved amber, maintenance red).
 
+**Highlight filters (new).** Two extra dropdowns sit next to Status:
+
+- **Highlight dept** — pick any department; every seat currently occupied by an employee in that department gets a bright **fuchsia ring** and the rest dim to 25% opacity. Powered by a one-shot `/employees?department=X&status=active` lookup that builds a set of matching seat IDs.
+- **Highlight project** — pick any project (30 listed as `PRJ001 · Indigo`, `PRJ002 · Indreed`, …); seats whose current occupant is on that project ring up the same way. Read straight off the seat payload's `allocated_project_id`, so no extra fetch.
+
+The floor caption gains a `· N highlighted` chip so you can eyeball the count at a glance. Clear either dropdown to remove the highlight.
+
 Click any seat to open the **Selection** panel on the right:
 
 - The seat's full code (e.g. `B1-F1-ZA-S055`), building/floor/zone/bay.
-- If occupied: the current occupant's name, department, and since-date.
+- If occupied: the current occupant's name, department, **current project** (name + code, linked to the project detail page), and since-date. If they're unassigned, the panel says so explicitly.
 - **Admin actions** (admin only): change the seat's status (mark as maintenance, reserve, or free it back to available), or delete the seat entirely. Deleting is guarded — you can't delete a seat while someone is actively sitting in it; release the allocation first.
 
 The layout is the real physical grid used by the seed data: 2 buildings × 5 floors × 5 zones × 110 seats = **5,500 seats** — sitting exactly at spec §6's floor of 5,500. Zone codes span `ZA..ZJ` (five zones per building × two buildings = 10 total, exactly the spec §6 "min 10 zones"). Each zone is split into 4 physical bays (BAY-1..BAY-4). The seat code (`B1-F3-ZA-S045`) encodes building / floor / zone / seat-number; the bay label is shown separately in the Selection panel.

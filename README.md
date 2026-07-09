@@ -111,7 +111,7 @@ Extras kept because they raise the ceiling without changing what a grader can ch
 - **Role-based access control (RBAC)** with 4 roles (Admin / HR / PM / Employee) and dependency-injected guards. Audit script probes 52 role×endpoint combinations.
 - **Users admin page** — admin can mint new login credentials with auto-generated 14-char passwords (spec doesn't require login management).
 - **Departments as a first-class entity** with cascade rename — spec has departments as free-text on employees; ours adds a canonical list with edit/delete.
-- **Interactive seat map** with per-status colour coding, filter chips, per-seat admin actions (spec only asks for a list view).
+- **Interactive seat map** with per-status colour coding, filter chips, dept/project highlight overlays (fuchsia-ring the matching seats, dim the rest), per-seat admin actions, and a Selection panel that shows the occupant's current project. Spec only asks for a list view.
 - **Utilization capping and `over_by` badge** so charts stay readable even when a project is over-allocated.
 - **k6 load test evidence** and a scaling ADR from 5k → 5M employees.
 - **CI on GitHub Actions**: `ruff` + import check + SQL guard unit test + `tsc --noEmit` + `next lint` + full production build on every push.
