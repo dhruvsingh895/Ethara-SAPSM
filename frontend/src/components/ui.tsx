@@ -80,6 +80,9 @@ const STATUS_STYLES: Record<string, string> = {
     "bg-indigo-500/10 text-indigo-700 ring-indigo-500/20 dark:text-indigo-300",
   reserved:
     "bg-amber-500/10 text-amber-700 ring-amber-500/20 dark:text-amber-300",
+  maintenance:
+    "bg-rose-500/10 text-rose-700 ring-rose-500/20 dark:text-rose-300",
+  // Keep legacy key so old API responses still render during the rename window.
   blocked:
     "bg-rose-500/10 text-rose-700 ring-rose-500/20 dark:text-rose-300",
   active:

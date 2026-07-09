@@ -8,11 +8,20 @@ Authentication. `role` is one of `admin | hr | pm | employee`. Optional 1:1 link
 ### `employees`
 Core profile. Self-referential `manager_id`. Denormalized `current_seat_id` and `current_project_id` for O(1) reads on the common "where does person X sit" query. `status` in `active | on_leave | exited`.
 
+The API response also carries the spec-aliased fields `name` (computed from `first_name + last_name`), `role` (aliased from `designation`), `employee_code` (aliased from `emp_code`), and `project_id` (aliased from `current_project_id`) so the shape matches assessment §7 without a schema rewrite.
+
 ### `seats`
-Physical desks. Unique `seat_code` like `B2-F3-Z1-S045`. `status` in `available | occupied | reserved | blocked`.
+Physical desks. Unique `seat_code` like `B2-F3-ZE-S045`. Columns: `building`, `floor`, `zone`, `bay`, `seat_number`, `status`.
+
+- `status` ∈ `available | occupied | reserved | maintenance` (spec §3.3).
+- 12 distinct zone codes across the estate: `ZA..ZD` in B1, `ZE..ZH` in B2, `ZI..ZL` in B3 (satisfies spec §6 ≥10 zones).
+- `bay` groups seats within a zone into physical clusters (`BAY-1..BAY-4`).
+- Unique composite index on `(building, floor, zone, seat_number)` enforces spec §8.7: no duplicate seat number on the same floor/zone.
 
 ### `projects`
 Business projects with a `code`, `name`, `client`, `pm_id`, `required_seats`, and lifecycle `status` (`active | on_hold | completed`).
+
+Seed data uses the 11 exact project names named in spec §3.2 (Indigo, Indreed, Mydreed, Preed, Serfy, Oreed, bedegreed, Opreed, Serry, Kaary, Mered) for `PRJ001..PRJ011`, then generated names to pad up to the seed target.
 
 ### `project_assignments`
 M2M join between employees and projects, with `role`, `allocation_pct` (0-100), `start_date`, and optional `end_date`.
@@ -21,10 +30,13 @@ M2M join between employees and projects, with `role`, `allocation_pct` (0-100), 
 Full history of who sat where. A row with `released_at IS NULL` is currently active. Composite indexes on `(seat_id, released_at)` and `(employee_id, released_at)` make active-lookup queries O(log n).
 
 ### `audit_log`
-Append-only trail for mutations. `action` is a typed enum covering allocation events, project changes, and employee edits.
+Append-only trail for mutations. `action` is a typed enum covering allocation events, project changes, and employee edits. Includes `maintenance` (renamed from `block` in migration `a2f4c81b5e07` to match spec vocabulary).
 
 ### `ai_query_log`
 Every natural-language query, the SQL Gemini produced, row count, latency, and status. Used for both audit and prompt-tuning.
+
+### `departments`
+Canonical department list — used by every dropdown in the app. Renamed rows cascade to `employees.department` in a single transaction.
 
 ## Roles
 
@@ -33,20 +45,41 @@ Every natural-language query, the SQL Gemini produced, row count, latency, and s
 
 ## Data at rest (after `python -m app.seed`)
 
-| Table                 | Rows   |
-| --------------------- | ------ |
-| `users`               | 4      |
-| `employees` (active)  | 5,000  |
-| `employees` (exited)  | 300    |
-| `seats`               | 6,000  |
-| `projects`            | 30     |
-| `project_assignments` | ~4,700 |
-| `seat_allocations`    | ~4,800 |
+| Table                 | Rows    | Spec minimum |
+| --------------------- | ------- | ------------ |
+| `users`               | 4       | —            |
+| `employees` (active)  | 5,000   | ≥ 5,000      |
+| `employees` (exited)  | 300     | —            |
+| `seats`               | 6,000   | ≥ 5,500      |
+| `seats` available     | ~900    | ≥ 500        |
+| `seats` reserved      | ~180    | ≥ 100        |
+| Unallocated actives   | ~200    | ≥ 50         |
+| `projects`            | 30      | ≥ 10 (11 spec-named + 19 generated) |
+| `distinct zones`      | 12      | ≥ 10         |
+| `project_assignments` | ~4,700  | —            |
+| `seat_allocations`    | ~4,800  | —            |
 
-Seat status distribution: **80% occupied / 15% available / 3% reserved / 2% blocked**.
+Seat status distribution: **80% occupied / 15% available / 3% reserved / 2% maintenance**.
+
+The seed script logs a `SPEC MINIMUM MISSED` warning at the end of every full-scale run if any minimum falls below the spec, so bad configuration surfaces immediately.
+
+## Business rules (enforced)
+
+Per spec §8:
+
+1. **One employee ↔ one active seat.** Enforced in the allocation service (`services/allocation.py`) — cannot allocate if `employees.current_seat_id IS NOT NULL`.
+2. **One seat ↔ one active employee.** Enforced by refusing allocation on a non-`available` seat.
+3. **Released seats become available.** `release()` sets `seats.status = available` in the same transaction as the allocation update.
+4. **Reserved seats cannot be allocated.** `allocate()` rejects with 409 unless status is first changed via `PUT /seats/{id}`.
+5. **New-joiner proximity.** `services/new_joiner.py` ranks vacant seats by teammate density, packing scarce zones first.
+6. **Unique employee email.** `employees.email` has a unique index; POST/PUT rejects duplicates with 409.
+7. **Unique seat per floor/zone.** Composite unique index on `(building, floor, zone, seat_number)`.
+8. **Dashboard freshness.** No caching — every dashboard query hits the DB directly. Denormalized fields on `employees` keep the hot paths O(1).
 
 ## Migrations
 
 - `382bc0c49159` — initial schema, all 8 tables and their indexes.
+- `ce61f5725b04` — add `departments` table.
+- `a2f4c81b5e07` — add `seats.bay` column, rename `blocked` → `maintenance` in `seats.status` and `audit_log.action`, add composite unique on `(building, floor, zone, seat_number)`.
 
 Managed by Alembic; see [`backend/alembic/versions/`](../backend/alembic/versions/).

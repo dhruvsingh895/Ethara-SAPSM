@@ -129,10 +129,11 @@ async def create_employee(
     return EmployeeOut.model_validate(emp)
 
 
-@router.patch(
+@router.api_route(
     "/{employee_id}",
     response_model=EmployeeOut,
     summary="Update employee (HR/Admin)",
+    methods=["PUT", "PATCH"],
 )
 async def update_employee(
     employee_id: int,

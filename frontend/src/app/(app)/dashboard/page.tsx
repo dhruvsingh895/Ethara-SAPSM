@@ -34,7 +34,7 @@ const CHART_COLORS = {
   occupied: "hsl(234, 89%, 66%)",
   available: "hsl(142, 71%, 45%)",
   reserved: "hsl(45, 100%, 51%)",
-  blocked: "hsl(0, 84%, 60%)",
+  maintenance: "hsl(0, 84%, 60%)",
   other: "hsl(240, 5%, 45%)",
 };
 
@@ -119,7 +119,7 @@ export default function DashboardPage() {
     { name: "Occupied", value: overview.occupancy.occupied, color: CHART_COLORS.occupied },
     { name: "Available", value: overview.occupancy.available, color: CHART_COLORS.available },
     { name: "Reserved", value: overview.occupancy.reserved, color: CHART_COLORS.reserved },
-    { name: "Blocked", value: overview.occupancy.blocked, color: CHART_COLORS.blocked },
+    { name: "Maintenance", value: overview.occupancy.maintenance, color: CHART_COLORS.maintenance },
   ];
 
   const floorData = byFloor.map((f) => ({
@@ -312,7 +312,7 @@ export default function DashboardPage() {
                 dataKey="other"
                 stackId="a"
                 fill={CHART_COLORS.other}
-                name="reserved/blocked"
+                name="reserved/maintenance"
                 radius={[4, 4, 0, 0]}
               />
             </BarChart>

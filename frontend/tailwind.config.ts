@@ -49,7 +49,7 @@ const config: Config = {
           available: "hsl(var(--seat-available))",
           occupied: "hsl(var(--seat-occupied))",
           reserved: "hsl(var(--seat-reserved))",
-          blocked: "hsl(var(--seat-blocked))",
+          maintenance: "hsl(var(--seat-maintenance))",
         },
       },
       borderRadius: {

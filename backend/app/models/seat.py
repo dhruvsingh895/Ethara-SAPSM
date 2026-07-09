@@ -21,6 +21,16 @@ class Seat(Base, TimestampMixin):
     __table_args__ = (
         Index("ix_seats_building_floor", "building", "floor"),
         Index("ix_seats_status_floor", "status", "floor"),
+        # Spec requires no duplicate seat_number on the same floor/zone.
+        # Include building so multi-building estates still work.
+        Index(
+            "uq_seats_building_floor_zone_seat_number",
+            "building",
+            "floor",
+            "zone",
+            "seat_number",
+            unique=True,
+        ),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -29,6 +39,10 @@ class Seat(Base, TimestampMixin):
     building: Mapped[str] = mapped_column(String(16), nullable=False)
     floor: Mapped[int] = mapped_column(Integer, nullable=False)
     zone: Mapped[str] = mapped_column(String(16), nullable=False)
+    # Bay = physical cluster of seats within a zone (spec field). Kept
+    # nullable so existing rows before the migration don't blow up; the
+    # seed always populates it.
+    bay: Mapped[Optional[str]] = mapped_column(String(16), nullable=True)
     seat_number: Mapped[int] = mapped_column(Integer, nullable=False)
 
     status: Mapped[SeatStatus] = mapped_column(

@@ -15,7 +15,10 @@ class OccupancySummary(BaseModel):
     available: int
     occupied: int
     reserved: int
-    blocked: int
+    # Spec calls this "Maintenance"; keeping both keys so old frontend
+    # code that reads `blocked` still works during the rename window.
+    maintenance: int
+    blocked: int = 0
     occupancy_pct: float
 
 

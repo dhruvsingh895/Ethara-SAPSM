@@ -12,13 +12,20 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_user, require_admin
+from app.api.deps import get_current_user, require_admin, require_hr_or_admin
 from app.db.session import get_db
 from app.models.enums import AuditAction, SeatStatus
 from app.models.seat import Seat
+from app.models.seat_allocation import SeatAllocation
 from app.models.user import User
+from app.schemas.allocation import (
+    AllocationCreate,
+    AllocationOut,
+    AllocationRelease,
+)
 from app.schemas.common import MessageResponse, Page, PageParams
 from app.schemas.seat import SeatCreate, SeatOut, SeatUpdate
+from app.services import allocation as alloc_svc
 from app.services import audit
 
 router = APIRouter(prefix="/seats", tags=["seats"])
@@ -106,6 +113,80 @@ async def list_available(
     )
 
 
+# -------------------------------------------------------------------
+# Spec-shape aliases: POST /seats/allocate and POST /seats/release.
+# Internally these delegate to the same service the /allocations
+# endpoints use, so both API shapes stay in lockstep. Registered BEFORE
+# the /{seat_id} route so the literal paths aren't captured as ids.
+# -------------------------------------------------------------------
+
+
+class SeatReleaseRequest(AllocationRelease):
+    seat_id: int
+
+
+@router.post(
+    "/allocate",
+    response_model=AllocationOut,
+    status_code=status.HTTP_201_CREATED,
+    summary="Allocate a seat to an employee (spec alias for POST /allocations)",
+)
+async def allocate_seat(
+    payload: AllocationCreate,
+    db: AsyncSession = Depends(get_db),
+    actor: User = Depends(require_hr_or_admin),
+) -> AllocationOut:
+    alloc = await alloc_svc.allocate(
+        db,
+        seat_id=payload.seat_id,
+        employee_id=payload.employee_id,
+        actor_user_id=actor.id,
+        note=payload.note,
+    )
+    await db.commit()
+    await db.refresh(alloc)
+    return AllocationOut.model_validate(alloc)
+
+
+@router.post(
+    "/release",
+    response_model=AllocationOut,
+    summary="Release the active allocation on a seat (spec alias)",
+)
+async def release_seat(
+    payload: SeatReleaseRequest,
+    db: AsyncSession = Depends(get_db),
+    actor: User = Depends(require_hr_or_admin),
+) -> AllocationOut:
+    """Release whichever allocation is currently active on `seat_id`."""
+    from sqlalchemy import and_ as _and
+
+    alloc = (
+        await db.execute(
+            select(SeatAllocation).where(
+                _and(
+                    SeatAllocation.seat_id == payload.seat_id,
+                    SeatAllocation.released_at.is_(None),
+                )
+            )
+        )
+    ).scalar_one_or_none()
+    if alloc is None:
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND,
+            f"No active allocation on seat_id={payload.seat_id}",
+        )
+    alloc = await alloc_svc.release(
+        db,
+        allocation_id=alloc.id,
+        actor_user_id=actor.id,
+        note=payload.note,
+    )
+    await db.commit()
+    await db.refresh(alloc)
+    return AllocationOut.model_validate(alloc)
+
+
 @router.get("/{seat_id}", response_model=SeatOut, summary="Get seat by id")
 async def get_seat(
     seat_id: int,
@@ -151,7 +232,12 @@ async def create_seat(
     return SeatOut.model_validate(seat)
 
 
-@router.patch("/{seat_id}", response_model=SeatOut, summary="Update seat (Admin)")
+@router.api_route(
+    "/{seat_id}",
+    response_model=SeatOut,
+    summary="Update seat (Admin)",
+    methods=["PUT", "PATCH"],
+)
 async def update_seat(
     seat_id: int,
     payload: SeatUpdate,
@@ -184,8 +270,8 @@ async def update_seat(
 
     action = AuditAction.RESERVE
     if "status" in changes:
-        if changes["status"] == SeatStatus.BLOCKED:
-            action = AuditAction.BLOCK
+        if changes["status"] == SeatStatus.MAINTENANCE:
+            action = AuditAction.MAINTENANCE
         elif changes["status"] == SeatStatus.RESERVED:
             action = AuditAction.RESERVE
 
@@ -227,7 +313,7 @@ async def delete_seat(
     await audit.record(
         db,
         actor_user_id=actor.id,
-        action=AuditAction.BLOCK,
+        action=AuditAction.MAINTENANCE,
         entity_type="seat",
         entity_id=seat_id,
         detail=f"deleted {code}",

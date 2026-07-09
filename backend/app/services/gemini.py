@@ -39,12 +39,13 @@ CREATE TABLE employees (
 
 CREATE TABLE seats (
     id           SERIAL PRIMARY KEY,
-    seat_code    VARCHAR(32) UNIQUE,         -- e.g. B2-F3-Z1-S045
+    seat_code    VARCHAR(32) UNIQUE,         -- e.g. B2-F3-ZE-S045
     building     VARCHAR(16),                -- 'B1' | 'B2' | 'B3'
     floor        INT,                        -- 1..5
-    zone         VARCHAR(16),                -- 'Z1' | 'Z2' | 'Z3' | 'Z4'
+    zone         VARCHAR(16),                -- 'ZA'..'ZL' (4 per building, 12 total)
+    bay          VARCHAR(16),                -- 'BAY-1'..'BAY-4' cluster within a zone
     seat_number  INT,
-    status       VARCHAR(32)                 -- 'AVAILABLE' | 'OCCUPIED' | 'RESERVED' | 'BLOCKED'
+    status       VARCHAR(32)                 -- 'available' | 'occupied' | 'reserved' | 'maintenance'
 );
 
 CREATE TABLE projects (

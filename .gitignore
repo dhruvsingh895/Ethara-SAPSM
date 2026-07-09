@@ -125,3 +125,4 @@ logs/
 tmp/
 scratch/
 notes.local.md
+*.local.md

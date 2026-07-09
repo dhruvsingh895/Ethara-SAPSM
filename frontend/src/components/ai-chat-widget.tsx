@@ -14,7 +14,7 @@ const QUICK_PROMPTS = [
   "Which floors have the most available Engineering seats?",
   "Which projects are over-allocated?",
   "Who are the most recent joiners in Product?",
-  "How many blocked seats are there?",
+  "How many seats are under maintenance?",
 ];
 
 interface Turn {

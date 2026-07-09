@@ -24,7 +24,7 @@ const STATUS_OPTIONS: (SeatStatusValue | "")[] = [
   "available",
   "occupied",
   "reserved",
-  "blocked",
+  "maintenance",
 ];
 
 const SEAT_CLS: Record<SeatStatusValue, string> = {
@@ -34,7 +34,7 @@ const SEAT_CLS: Record<SeatStatusValue, string> = {
     "bg-indigo-500/15 text-indigo-700 ring-1 ring-indigo-500/30 hover:bg-indigo-500/25 dark:text-indigo-300",
   reserved:
     "bg-amber-500/15 text-amber-700 ring-1 ring-amber-500/30 hover:bg-amber-500/25 dark:text-amber-300",
-  blocked:
+  maintenance:
     "bg-rose-500/15 text-rose-700 ring-1 ring-rose-500/30 hover:bg-rose-500/25 dark:text-rose-300",
 };
 
@@ -42,7 +42,7 @@ const LEGEND: { status: SeatStatusValue; label: string; dot: string }[] = [
   { status: "available", label: "Available", dot: "bg-emerald-500" },
   { status: "occupied", label: "Occupied", dot: "bg-indigo-500" },
   { status: "reserved", label: "Reserved", dot: "bg-amber-500" },
-  { status: "blocked", label: "Blocked", dot: "bg-rose-500" },
+  { status: "maintenance", label: "Maintenance", dot: "bg-rose-500" },
 ];
 
 export default function SeatsPage() {
@@ -294,6 +294,7 @@ function SelectionPanel({
         </p>
         <p className="mt-0.5 text-xs text-muted-foreground">
           {seat.building} · Floor {seat.floor} · Zone {seat.zone}
+          {seat.bay ? ` · ${seat.bay}` : ""}
         </p>
       </div>
       <Badge status={seat.status} />
@@ -451,7 +452,7 @@ function AdminSeatControls({
           >
             <option value="available">available</option>
             <option value="reserved">reserved</option>
-            <option value="blocked">blocked</option>
+            <option value="maintenance">maintenance</option>
           </Select>
           <div className="flex gap-1.5">
             <button

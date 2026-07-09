@@ -1,6 +1,10 @@
 export type UserRole = "admin" | "hr" | "pm" | "employee";
 export type EmployeeStatus = "active" | "on_leave" | "exited";
-export type SeatStatusValue = "available" | "occupied" | "reserved" | "blocked";
+export type SeatStatusValue =
+  | "available"
+  | "occupied"
+  | "reserved"
+  | "maintenance";
 export type ProjectStatus = "active" | "on_hold" | "completed";
 
 export interface User {
@@ -49,6 +53,7 @@ export interface Seat {
   building: string;
   floor: number;
   zone: string;
+  bay: string | null;
   seat_number: number;
   status: SeatStatusValue;
   notes?: string | null;
@@ -93,7 +98,11 @@ export interface OccupancySummary {
   available: number;
   occupied: number;
   reserved: number;
-  blocked: number;
+  /** Spec name: seats out of service. Backend also aliases as `blocked`
+   *  for a legacy window; prefer `maintenance` going forward. */
+  maintenance: number;
+  /** @deprecated same value as `maintenance`. Will be removed. */
+  blocked?: number;
   occupancy_pct: number;
 }
 
@@ -146,6 +155,8 @@ export type AiQueryStatus =
   | "unavailable";
 
 export interface AiQueryResponse {
+  /** Plain-English summary of the query result (spec-required top-level field). */
+  answer: string;
   prompt: string;
   sql: string | null;
   columns: string[];

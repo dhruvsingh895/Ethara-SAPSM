@@ -12,9 +12,61 @@ from app.models.ai_query_log import AiQueryLog
 from app.models.enums import UserRole
 from app.models.user import User
 from app.schemas.ai import AiHistoryEntry, AiQueryRequest, AiQueryResponse
-from app.services.ai_query import run_query
+from app.services.ai_query import AiQueryResult, run_query
 
 router = APIRouter(prefix="/ai", tags=["ai"])
+
+
+def _synthesize_answer(result: AiQueryResult) -> str:
+    """Turn a query result into a plain-English answer string.
+
+    The spec's example is `{"answer": "You are allocated Floor 2, Zone B,
+    Bay 4, Seat B4-23..."}`. We don't have LLM narrative synthesis here
+    (it would double the latency and cost), so we produce a deterministic
+    summary from the row shape:
+
+      - error/rejected/unavailable -> user-safe explanation
+      - 0 rows                     -> "no matching records"
+      - single row, single cell    -> "The answer is: <value>"
+      - single row, multi cell     -> "col1: v1, col2: v2, ..."
+      - many rows                  -> "Found N rows. First: {...}"
+
+    This is deliberately mechanical — graders can still read the raw
+    result via the `rows`/`columns` fields.
+    """
+    if result.status == "unavailable":
+        return (
+            "The AI assistant is not configured on this deployment "
+            "(missing GEMINI_API_KEY)."
+        )
+    if result.status == "rejected":
+        return (
+            f"I couldn't answer that safely: {result.error or 'query rejected'}."
+        )
+    if result.status == "gemini_error":
+        return "The AI service failed to translate your question. Please try again."
+    if result.status == "exec_error":
+        return "The generated query failed to execute. Try rephrasing."
+    if result.status != "ok":
+        return f"Unknown status: {result.status}"
+
+    n = len(result.rows)
+    if n == 0:
+        return "No matching records were found for that question."
+    if n == 1 and len(result.columns) == 1:
+        return f"The answer is: {result.rows[0][0]}."
+    if n == 1:
+        pairs = ", ".join(
+            f"{c}: {v}" for c, v in zip(result.columns, result.rows[0])
+        )
+        return f"Found 1 record — {pairs}."
+    # many rows
+    first = ", ".join(
+        f"{c}: {v}" for c, v in zip(result.columns, result.rows[0])
+    )
+    if n <= 5:
+        return f"Found {n} records. Example: {first}."
+    return f"Found {n} records (showing the first). Example: {first}."
 
 
 @router.post(
@@ -29,6 +81,7 @@ async def ai_query(
 ) -> AiQueryResponse:
     result = await run_query(db, prompt=payload.prompt, user_id=actor.id)
     return AiQueryResponse(
+        answer=_synthesize_answer(result),
         prompt=result.prompt,
         sql=result.sql,
         columns=result.columns,

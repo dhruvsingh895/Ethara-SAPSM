@@ -146,6 +146,7 @@ export default function EmployeeDetailPage() {
               </p>
               <p className="text-xs text-muted-foreground">
                 {seat.building} · Floor {seat.floor} · Zone {seat.zone}
+                {seat.bay ? ` · ${seat.bay}` : ""}
               </p>
               <div>
                 <Badge status={seat.status} />

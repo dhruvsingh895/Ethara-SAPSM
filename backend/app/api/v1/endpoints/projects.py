@@ -11,11 +11,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, require_admin, require_pm_or_admin
 from app.db.session import get_db
+from app.models.employee import Employee
 from app.models.enums import AuditAction, ProjectStatus
 from app.models.project import Project
 from app.models.project_assignment import ProjectAssignment
 from app.models.user import User
 from app.schemas.common import MessageResponse, Page, PageParams
+from app.schemas.employee import EmployeeOut
 from app.schemas.project import ProjectCreate, ProjectOut, ProjectUpdate
 from app.schemas.project_assignment import (
     ProjectAssignmentCreate,
@@ -123,7 +125,12 @@ async def create_project(
     return ProjectOut.model_validate(p)
 
 
-@router.patch("/{project_id}", response_model=ProjectOut, summary="Update project (Admin)")
+@router.api_route(
+    "/{project_id}",
+    response_model=ProjectOut,
+    summary="Update project (Admin)",
+    methods=["PUT", "PATCH"],
+)
 async def update_project(
     project_id: int,
     payload: ProjectUpdate,
@@ -218,6 +225,61 @@ async def project_roster(
 
     return Page[ProjectAssignmentOut](
         items=[ProjectAssignmentOut.model_validate(a) for a in items],
+        total=total,
+        limit=page.limit,
+        offset=page.offset,
+    )
+
+
+@router.get(
+    "/{project_id}/employees",
+    response_model=Page[EmployeeOut],
+    summary="List employees on a project (spec-shaped view of the roster)",
+)
+async def project_employees(
+    project_id: int,
+    page: PageParams = Depends(),
+    active_only: bool = Query(True),
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_user),
+) -> Page[EmployeeOut]:
+    """Spec-required endpoint: returns Employee rows for a project.
+
+    Internally this is the same data as /roster but joined back to
+    employees so the response shape matches GET /employees. The /roster
+    endpoint is kept as-is because the frontend uses it for the
+    per-assignment allocation percentages.
+    """
+    p = await db.get(Project, project_id)
+    if p is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Project not found")
+
+    join_cond = ProjectAssignment.project_id == project_id
+    if active_only:
+        today = date.today()
+        join_cond = join_cond & (
+            or_(ProjectAssignment.end_date.is_(None), ProjectAssignment.end_date >= today)
+        )
+
+    base = (
+        select(Employee)
+        .join(ProjectAssignment, ProjectAssignment.employee_id == Employee.id)
+        .where(join_cond)
+        .distinct()
+    )
+    count_stmt = (
+        select(func.count(func.distinct(Employee.id)))
+        .select_from(Employee)
+        .join(ProjectAssignment, ProjectAssignment.employee_id == Employee.id)
+        .where(join_cond)
+    )
+
+    total = (await db.execute(count_stmt)).scalar_one()
+    stmt = base.order_by(Employee.id).limit(page.limit).offset(page.offset)
+    items = (await db.execute(stmt)).scalars().all()
+
+    return Page[EmployeeOut](
+        items=[EmployeeOut.model_validate(e) for e in items],
         total=total,
         limit=page.limit,
         offset=page.offset,

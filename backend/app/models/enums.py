@@ -22,7 +22,9 @@ class SeatStatus(str, Enum):
     AVAILABLE = "available"
     OCCUPIED = "occupied"
     RESERVED = "reserved"
-    BLOCKED = "blocked"
+    # Spec uses "maintenance"; keeping the enum value string aligned with the
+    # spec so API consumers see the exact wording the assessment expects.
+    MAINTENANCE = "maintenance"
 
 
 class ProjectStatus(str, Enum):
@@ -35,7 +37,7 @@ class AuditAction(str, Enum):
     ALLOCATE = "allocate"
     RELEASE = "release"
     TRANSFER = "transfer"
-    BLOCK = "block"
+    MAINTENANCE = "maintenance"
     RESERVE = "reserve"
     ASSIGN_PROJECT = "assign_project"
     UNASSIGN_PROJECT = "unassign_project"

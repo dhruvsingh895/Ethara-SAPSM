@@ -30,9 +30,9 @@ type Entry =
 
 const STATUS_LABEL: Record<string, string> = {
   ok: "available",
-  rejected: "blocked",
-  gemini_error: "blocked",
-  exec_error: "blocked",
+  rejected: "maintenance",
+  gemini_error: "maintenance",
+  exec_error: "maintenance",
   unavailable: "reserved",
 };
 
@@ -233,7 +233,7 @@ function LiveQueryCard({
             <span className="text-muted-foreground">
               {response.duration_ms} ms
             </span>
-            <Badge status={STATUS_LABEL[response.status] ?? "blocked"}>
+            <Badge status={STATUS_LABEL[response.status] ?? "maintenance"}>
               {response.status}
             </Badge>
           </div>
@@ -249,6 +249,12 @@ function LiveQueryCard({
       {error && (
         <p className="mt-3 rounded-md border border-danger/40 bg-danger/10 p-3 text-sm text-danger">
           {error}
+        </p>
+      )}
+
+      {response?.answer && (
+        <p className="mt-3 rounded-md border border-primary/30 bg-primary/5 p-3 text-sm">
+          {response.answer}
         </p>
       )}
 
@@ -340,7 +346,7 @@ function HistoryQueryCard({
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <Badge status={STATUS_LABEL[entry.status] ?? "blocked"}>
+          <Badge status={STATUS_LABEL[entry.status] ?? "maintenance"}>
             {entry.status}
           </Badge>
           <button

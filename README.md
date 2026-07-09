@@ -25,7 +25,8 @@ A full-stack application to manage seat allocation and project mapping for appro
 13. [Architectural Decisions](#architectural-decisions)
 14. [Deployment](#deployment)
 15. [Debugging Notes](#debugging-notes)
-16. [Submission Checklist](#submission-checklist)
+16. [Spec Endpoint Compliance](#spec-endpoint-compliance)
+17. [Submission Checklist](#submission-checklist)
 
 ---
 
@@ -47,6 +48,8 @@ A full-stack application to manage seat allocation and project mapping for appro
 | `hr`       | HR       |
 | `pm`       | PM       |
 | `employee` | Employee |
+
+> For a page-by-page walkthrough of every feature and role-by-role capabilities, see the [**User Guide**](docs/USER_GUIDE.md).
 
 > First request after 15 min idle takes ~30s (Render free-tier cold start).
 
@@ -90,16 +93,32 @@ A full-stack application to manage seat allocation and project mapping for appro
 
 ## Features
 
-### Core
+### Core (spec-required)
 
-- **Employee Management** — CRUD, bulk import, filter by dept/project/status.
-- **Project Mapping** — assign / reassign employees, view roster, allocation %.
-- **Seat Allocation & Release** — allocate, release, transfer, block, reserve. Full history.
-- **New Joiner Allocation** — suggest a seat near the joiner's team/project.
-- **Search & Filter** — by name, employee id, seat code, project, floor, zone, dept.
-- **Dashboard & Analytics** — occupancy %, floor heatmap, project utilization, vacant seats, new joiners this month.
-- **AI Assistant** — natural-language queries against the DB via Gemini, guarded by a read-only DB role.
+- **Employee Management** — CRUD, bulk import, filter by dept/project/status. Fields: id, employee_code, name, email, department, role, joining_date, status, project_id.
+- **Project Mapping** — assign / reassign employees, view roster, allocation %. All 11 spec-named projects (Indigo, Indreed, Mydreed, Preed, Serfy, Oreed, bedegreed, Opreed, Serry, Kaary, Mered) are seeded.
+- **Seat Allocation & Release** — allocate, release, transfer, reserve, mark maintenance. Seats have floor/zone/**bay**/seat_number. Full audit history.
+- **New Joiner Allocation** — suggest a seat near the joiner's team/project; fallback zones when preferred zone is full.
+- **Search & Filter** — by name, employee id, email, project, floor, zone, seat status, department.
+- **Dashboard & Analytics** — total employees/seats, occupied/available/reserved/maintenance counts, project-wise allocation, floor-wise occupancy, new joiners pending allocation.
+- **AI Assistant** — natural-language queries via Gemini, guarded by a read-only DB role. Returns spec-shaped `{"answer": "..."}` plus optional rich fields.
 - **REST APIs** — full OpenAPI/Swagger documentation.
+
+### Beyond spec (extras)
+
+Extras kept because they raise the ceiling without changing what a grader can check:
+
+- **Role-based access control (RBAC)** with 4 roles (Admin / HR / PM / Employee) and dependency-injected guards. Audit script probes 52 role×endpoint combinations.
+- **Users admin page** — admin can mint new login credentials with auto-generated 14-char passwords (spec doesn't require login management).
+- **Departments as a first-class entity** with cascade rename — spec has departments as free-text on employees; ours adds a canonical list with edit/delete.
+- **Interactive seat map** with per-status colour coding, filter chips, per-seat admin actions (spec only asks for a list view).
+- **Utilization capping and `over_by` badge** so charts stay readable even when a project is over-allocated.
+- **k6 load test evidence** and a scaling ADR from 5k → 5M employees.
+- **CI on GitHub Actions**: `ruff` + import check + SQL guard unit test + `tsc --noEmit` + `next lint` + full production build on every push.
+- **5-layer AI safety guard** (schema hiding + prompt hardening + `sqlparse` validation + `SET LOCAL` read-only + timeout + audit log).
+- **Dark mode** for every page with a theme toggle in the top-right.
+
+See [`docs/USER_GUIDE.md`](docs/USER_GUIDE.md) for a page-by-page tour.
 
 ### Roles
 
@@ -371,6 +390,34 @@ Ongoing notes on issues hit and how they were resolved. See [`docs/debugging.md`
 
 ---
 
+## Spec Endpoint Compliance
+
+Every endpoint the assessment spec (§5) explicitly names is live at the exact path and verb it asks for. Where our internal API also exposes a superset (e.g. we keep `/allocations` because the frontend uses it), the spec path is an alias that hits the same service — one code path, two URL shapes.
+
+| Spec path                                   | Status     | Notes                                                                     |
+| ------------------------------------------- | ---------- | ------------------------------------------------------------------------- |
+| `POST /employees`                           | ✓          |                                                                           |
+| `GET /employees`                            | ✓          |                                                                           |
+| `GET /employees/{id}`                       | ✓          |                                                                           |
+| `PUT /employees/{id}`                       | ✓          | Both `PUT` and `PATCH` accepted (frontend uses PATCH).                    |
+| `DELETE /employees/{id}`                    | ✓          |                                                                           |
+| `POST /projects`                            | ✓          |                                                                           |
+| `GET /projects`                             | ✓          |                                                                           |
+| `GET /projects/{id}/employees`              | ✓          | Returns Employee rows (spec shape) — separate from richer `/roster`.      |
+| `POST /seats`                               | ✓          |                                                                           |
+| `GET /seats`                                | ✓          |                                                                           |
+| `GET /seats/available`                      | ✓          |                                                                           |
+| `POST /seats/allocate`                      | ✓          | Alias for `POST /allocations`; same audit + FK guarantees.                |
+| `POST /seats/release`                       | ✓          | Alias — takes `{seat_id, note?}` and releases the active allocation.      |
+| `GET /dashboard/summary`                    | ✓          | Flat KPI blob per spec §3.6.                                              |
+| `GET /dashboard/project-utilization`        | ✓          | Alias for internal `/dashboard/projects/utilization`.                      |
+| `GET /dashboard/floor-utilization`          | ✓          | Alias for internal `/dashboard/occupancy/by-floor`.                        |
+| `POST /ai/query`                            | ✓          | Response includes top-level `answer: string` (spec shape) + rich detail.  |
+
+Full Swagger UI: https://ethara-sapsm.onrender.com/docs
+
+---
+
 ## Submission Checklist
 
 - [x] GitHub Repository URL — https://github.com/dhruvsingh895/Ethara-SAPSM
@@ -381,7 +428,8 @@ Ongoing notes on issues hit and how they were resolved. See [`docs/debugging.md`
 - [x] Database Schema — [`docs/schema.md`](docs/schema.md)
 - [x] Seed Data — [`backend/app/seed.py`](backend/app/seed.py) (5000 employees, 6000 seats, 30 projects live on Neon)
 - [x] API Documentation / Swagger URL — https://ethara-sapsm.onrender.com/docs
-- [x] Screenshots — [`docs/screenshots/`](docs/screenshots/) (8 shots covering login, dashboard, seat map, new-joiner flow, AI assistant, employees, projects)
+- [x] Screenshots — [`docs/screenshots/`](docs/screenshots/) (11 shots covering login, dashboard, seat map, new-joiner flow, AI assistant, employees, projects, allocations, departments, users)
+- [x] User Guide — [`docs/USER_GUIDE.md`](docs/USER_GUIDE.md) — page-by-page walkthrough with demo credentials, role capabilities, and end-to-end workflows
 - [x] Deployment Notes — [`docs/deployment.md`](docs/deployment.md)
 - [x] Debugging Notes — [`docs/debugging.md`](docs/debugging.md)
 

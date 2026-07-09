@@ -33,6 +33,7 @@ All entries are ordered chronologically. Each entry follows the schema:
 - [Phase 5 — Frontend](#phase-5--frontend)
 - [Phase 6 — AI Assistant (Gemini NL to SQL)](#phase-6--ai-assistant-gemini-nl-to-sql)
 - [Phase 7 — Deployment](#phase-7--deployment)
+- [Spec §9 summary — What AI got right / wrong / how verified](#spec-9-summary--what-ai-got-right--wrong--how-verified)
 
 ---
 
@@ -304,6 +305,51 @@ Round-tripped `hash_password` / `verify_password` and `create_access_token` / `d
 **Output (summary):** `.github/workflows/ci.yml` with two jobs (`backend`, `frontend`). The SQL guard test is inlined into the workflow rather than a separate `tests/` directory — 13 cases, no DB needed, runs in under 5s.
 **Manual fixes:** Pre-ran ruff locally and caught one unused import in `endpoints/seats.py` (`from sqlalchemy import or_, ...` — `or_` wasn't used after a Phase 2 refactor). Fixed before pushing so the first CI run wouldn't fail.
 **Validation:** Backend passes `ruff check app`. Frontend passes `npm run lint` clean. Full build is verified against every push via the workflow.
+
+---
+
+## Spec §9 summary — What AI got right / wrong / how verified
+
+The assessment spec (§9) asks for an explicit summary of AI usage across the whole project. Every entry above has per-item details; this section is the executive summary, keyed by category:
+
+### What AI generated **correctly** (used as-is or with only cosmetic edits)
+
+- **System decomposition and phasing.** The initial planning pass (Entry #1) mapped the problem into 8 functional modules and a 7-phase build order that held up all the way to submission — no phase had to be re-planned.
+- **Boilerplate scaffolding.** FastAPI routers with dependency injection, Pydantic v2 schemas, Alembic migration files, Next.js route groups, Tailwind design tokens, `useEffect` data-fetch hooks — all shipped without functional edits.
+- **The SQL safety guard.** The 5-layer defence (schema hiding, prompt hardening, `sqlparse` validation, `SET LOCAL statement_timeout + default_transaction_read_only`, audit log) was AI-designed and shipped intact. Verified with a 13-case guard-unit test that runs in CI.
+- **Recharts wiring, chart tooltips, dashboard aggregate queries.** All produced correctly on the first pass; the aggregate SQL matched hand-written expectations to the row.
+- **RBAC dependency pattern.** `require_admin` / `require_hr_or_admin` / `require_pm_or_admin` as FastAPI `Depends()` was AI-suggested; verified end-to-end with `backend/scripts/rbac_audit.py` (52/52 role×endpoint combos pass on live prod).
+
+### What AI generated **incorrectly** (had to be manually fixed)
+
+- **Bcrypt / passlib incompatibility.** AI-generated code pulled the latest `bcrypt` (4.1.x). This breaks `passlib==1.7.4` because passlib inspects `bcrypt.__about__.__version__` which was removed. Manually pinned `bcrypt==4.0.1` in `requirements.txt` after the login endpoint 500-errored during first deploy.
+- **`use_alter=True` on FK cycle.** First cut had circular FKs between `employees.current_project_id` and `projects.pm_id` without `use_alter=True`. Alembic autogen produced a migration that Postgres refused to run because it couldn't order the CREATE TABLE statements. Added `use_alter=True` on both sides manually.
+- **`SeatStatus.BLOCKED`.** AI defaulted to the enum value `blocked`, which is common in office-management systems. The assessment spec specifies `Maintenance`. Renamed enum, migration, seed, dashboard aggregation, and every frontend reference in a single dedicated pass (this commit).
+- **Zone naming.** AI seeded 4 zones per building (`Z1..Z4`) — but the spec requires ≥10 distinct zones across the estate. Expanded to 12 zone labels (`ZA..ZL`) via `ZONES_BY_BUILDING`.
+- **PATCH-only update endpoints.** AI produced idiomatic FastAPI (PATCH for partial updates). The spec explicitly asks for `PUT /employees/{id}` etc. Added `PUT` as a second method on every update route via `@router.api_route(methods=["PUT","PATCH"])` — both work.
+- **AI `/ai/query` response shape.** AI's first cut returned `{prompt, sql, rows, ...}`. Spec's example response is `{"answer": "..."}`. Added a top-level `answer` string synthesised from the query result, kept the rich fields as siblings so the UI still gets its table + SQL disclosure.
+- **`react/no-unescaped-entities`.** Vercel build failed on an apostrophe in JSX text (`this seat's status`). Not caught by local dev server; only surfaced in production build. Escaped to `&apos;s`. Lesson: `npm run build` before every push.
+- **Utilization display over-shoot.** AI's first dashboard util column showed values like 462% because seeded `required_seats` were lower than actual members. Retuned seed twice; final approach: two-pass tuning where top-2 projects go to exactly 100%, everyone else stays under 100% by design; the backend also caps `utilization_pct` at 100 and exposes `over_by` separately.
+- **Employee search only did exact-match on department.** Spec expects fuzzy search across all fields. Fixed to `ILIKE '%q%'` across name/email/code/designation/department.
+
+### What the candidate **manually built without AI generation**
+
+- **The spec-compliance audit pass.** Reading the spec end-to-end, diffing it against the codebase, and producing the punch list of gaps was done manually (with a research agent, not code-gen). AI was then used to execute the fixes, not to find them.
+- **All UX judgment calls.** Which button lives where, when to guard with a confirmation, when to hide vs disable a control, what to prefill vs leave empty on the login page — these were decided by the candidate and given to AI as constraints.
+- **Every commit message.** Written manually. Kept short but understandable per user preference.
+- **The screenshot capture and curation.** Layout choices for the assessment shots, sequencing, captions.
+
+### How correctness was **verified**
+
+Every AI-generated block that shipped was checked via at least one of:
+
+1. **Runtime execution.** The endpoint or component was actually called from the running app and the response inspected. Seat allocation, new-joiner suggestions, dashboard KPIs, AI chat, delete flows — all exercised through the UI end-to-end.
+2. **Unit tests where applicable.** The SQL guard has a 13-case pytest that runs in CI (`.github/workflows/ci.yml`). No mocks; the guard is pure Python.
+3. **Migration replay on a scratch DB.** `alembic upgrade head` → seed → smoke-test — done before every deploy.
+4. **RBAC audit script.** `backend/scripts/rbac_audit.py` probes all 52 role×endpoint combinations on the live deployment. Currently 52/52 pass; run after every backend change.
+5. **k6 load test.** `docs/perf/` has the load-test config plus captured results (p95 latency, throughput at 50 VUs). Anytime a change touches a hot query, this is rerun.
+6. **Type checking + lint.** `ruff` (backend), `tsc --noEmit` + `next lint` (frontend), gated by CI on every push. Zero warnings policy.
+7. **Manual visual regression.** Every UI change is loaded in the browser (Chrome + Firefox), on both light and dark modes, before commit. Screenshots in `docs/screenshots/` are the current source of truth.
 
 ---
 

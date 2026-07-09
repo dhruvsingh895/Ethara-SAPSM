@@ -10,13 +10,6 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 
-const DEMO_ACCOUNTS = [
-  { username: "admin", role: "Administrator" },
-  { username: "hr", role: "HR" },
-  { username: "pm", role: "Project Manager" },
-  { username: "employee", role: "Employee" },
-];
-
 export default function LoginPage() {
   return (
     <Suspense fallback={<LoginFallback />}>
@@ -39,8 +32,8 @@ function LoginForm() {
   const nextPath = params.get("next") ?? "/dashboard";
   const { user, login, loading } = useAuth();
 
-  const [username, setUsername] = useState("admin");
-  const [password, setPassword] = useState("demo1234");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -145,34 +138,6 @@ function LoginForm() {
               {busy ? "Signing in…" : "Sign in"}
             </button>
           </form>
-        </div>
-
-        {/* Demo accounts */}
-        <div className="rounded-xl border border-dashed border-border bg-muted/30 p-4">
-          <div className="flex items-center justify-between">
-            <p className="text-xs font-medium">Demo accounts</p>
-            <p className="text-[11px] text-muted-foreground">
-              Password: <code className="font-mono">demo1234</code>
-            </p>
-          </div>
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            {DEMO_ACCOUNTS.map((a) => (
-              <button
-                key={a.username}
-                type="button"
-                onClick={() => setUsername(a.username)}
-                className={
-                  "flex flex-col items-start gap-0.5 rounded-md border border-border bg-background px-2.5 py-2 text-left text-xs transition hover:border-primary/50 hover:bg-accent " +
-                  (username === a.username ? "border-primary/50 bg-accent" : "")
-                }
-              >
-                <span className="font-mono font-medium">{a.username}</span>
-                <span className="text-[11px] text-muted-foreground">
-                  {a.role}
-                </span>
-              </button>
-            ))}
-          </div>
         </div>
 
         <p className="text-center text-[11px] text-muted-foreground">
