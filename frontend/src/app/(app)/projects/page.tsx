@@ -1,10 +1,9 @@
 "use client";
 
-import { ChevronRight, Plus, Search, Trash2 } from "lucide-react";
+import { ChevronRight, Plus, Search } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
-import { ConfirmButton } from "@/components/confirm";
 import { Field, Input, Select } from "@/components/input";
 import { Pagination } from "@/components/pagination";
 import { Badge, Card, PageHeader, TableShell } from "@/components/ui";
@@ -42,16 +41,6 @@ export default function ProjectsPage() {
       .then(setData)
       .catch((e) => setErr(e.message));
   }, [query, tick]);
-
-  async function remove(id: number) {
-    setErr(null);
-    try {
-      await apiFetch(`/api/v1/projects/${id}`, { method: "DELETE" });
-      setTick((t) => t + 1);
-    } catch (e) {
-      setErr(e instanceof ApiError ? e.detail : String(e));
-    }
-  }
 
   return (
     <div className="space-y-6">
@@ -155,22 +144,13 @@ export default function ProjectsPage() {
                 {p.required_seats}
               </td>
               <td className="pr-4 py-2.5 text-right">
-                <div className="inline-flex items-center gap-1.5">
-                  <Link
-                    href={`/projects/${p.id}`}
-                    className="inline-flex items-center gap-0.5 text-xs font-medium text-primary hover:underline"
-                  >
-                    View
-                    <ChevronRight className="h-3.5 w-3.5" />
-                  </Link>
-                  {isAdmin && (
-                    <ConfirmButton
-                      label=""
-                      icon={<Trash2 className="h-3 w-3" />}
-                      onConfirm={() => remove(p.id)}
-                    />
-                  )}
-                </div>
+                <Link
+                  href={`/projects/${p.id}`}
+                  className="inline-flex items-center gap-0.5 text-xs font-medium text-primary hover:underline"
+                >
+                  View
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </Link>
               </td>
             </tr>
           ))}
