@@ -19,7 +19,15 @@ import { Select } from "@/components/input";
 import { Badge, Card } from "@/components/ui";
 import { ApiError, apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
-import type { Employee, EmployeeStatus, Project, Seat } from "@/lib/types";
+import { useProjects } from "@/lib/use-projects";
+import type {
+  Employee,
+  EmployeeStatus,
+  Page,
+  Project,
+  ProjectAssignment,
+  Seat,
+} from "@/lib/types";
 
 const STATUS_OPTIONS: EmployeeStatus[] = ["active", "on_leave", "exited"];
 
@@ -160,7 +168,23 @@ export default function EmployeeDetailPage() {
         </Card>
 
         <Card>
-          <p className="label-cap">Current project</p>
+          <div className="flex items-start justify-between gap-2">
+            <p className="label-cap">Current project</p>
+            {canEdit && (
+              <ProjectControl
+                employee={emp}
+                currentProject={project}
+                onChanged={(next) => {
+                  setProject(next);
+                  setEmp((prev) =>
+                    prev
+                      ? { ...prev, current_project_id: next?.id ?? null }
+                      : prev,
+                  );
+                }}
+              />
+            )}
+          </div>
           {project ? (
             <div className="mt-3 space-y-2 text-sm">
               <Link
@@ -287,6 +311,161 @@ function StatusControl({
       </button>
       {err && (
         <p className="w-full rounded-md border border-danger/40 bg-danger/10 px-2 py-1 text-xs text-danger">
+          {err}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function ProjectControl({
+  employee,
+  currentProject,
+  onChanged,
+}: {
+  employee: Employee;
+  currentProject: Project | null;
+  onChanged: (next: Project | null) => void;
+}) {
+  const { projects } = useProjects();
+  const [editing, setEditing] = useState(false);
+  const [pickedId, setPickedId] = useState<string>(
+    currentProject ? String(currentProject.id) : "",
+  );
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  // Only ACTIVE projects are valid targets (spec §3.2 says "active").
+  const activeProjects = projects.filter((p) => p.status === "active");
+
+  async function findActiveAssignmentId(): Promise<number | null> {
+    if (!currentProject) return null;
+    // The 1:1 rule means there's at most one active row per employee, so
+    // paging through the roster is fine — we take the first match.
+    let offset = 0;
+    const limit = 200;
+    while (true) {
+      const p = await apiFetch<Page<ProjectAssignment>>(
+        `/api/v1/projects/${currentProject.id}/roster?active_only=true&limit=${limit}&offset=${offset}`,
+      );
+      const hit = p.items.find((a) => a.employee_id === employee.id);
+      if (hit) return hit.id;
+      if (offset + limit >= p.total) return null;
+      offset += limit;
+    }
+  }
+
+  async function save() {
+    setErr(null);
+    setBusy(true);
+    try {
+      const targetId = pickedId ? Number(pickedId) : null;
+      const currentId = currentProject?.id ?? null;
+      if (targetId === currentId) {
+        setEditing(false);
+        return;
+      }
+
+      // Close the current active assignment first (if any). This clears
+      // employees.current_project_id server-side so the POST that follows
+      // doesn't trip the partial-unique 1:1 index.
+      if (currentId !== null) {
+        const aid = await findActiveAssignmentId();
+        if (aid == null) {
+          throw new Error(
+            "Couldn't find the active assignment row to close — try refreshing.",
+          );
+        }
+        const today = new Date().toISOString().slice(0, 10);
+        await apiFetch(
+          `/api/v1/projects/${currentId}/assignments/${aid}`,
+          { method: "PATCH", json: { end_date: today } },
+        );
+      }
+
+      // Create a fresh active assignment on the picked project.
+      if (targetId !== null) {
+        await apiFetch(`/api/v1/projects/${targetId}/assignments`, {
+          method: "POST",
+          json: {
+            employee_id: employee.id,
+            project_id: targetId,
+            role: "Developer",
+            allocation_pct: 100,
+            start_date: new Date().toISOString().slice(0, 10),
+          },
+        });
+      }
+
+      const nextProject =
+        targetId == null
+          ? null
+          : projects.find((p) => p.id === targetId) ?? null;
+      onChanged(nextProject);
+      setEditing(false);
+    } catch (e) {
+      setErr(e instanceof ApiError ? e.detail : String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!editing) {
+    return (
+      <button
+        type="button"
+        onClick={() => {
+          setPickedId(currentProject ? String(currentProject.id) : "");
+          setErr(null);
+          setEditing(true);
+        }}
+        title={currentProject ? "Change project" : "Assign project"}
+        className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-2 py-0.5 text-[11px] font-medium text-muted-foreground transition hover:bg-accent hover:text-foreground"
+      >
+        <Pencil className="h-3 w-3" />
+        {currentProject ? "Change" : "Assign"}
+      </button>
+    );
+  }
+
+  return (
+    <div className="flex w-full flex-col items-stretch gap-2">
+      <Select
+        value={pickedId}
+        onChange={(e) => setPickedId(e.target.value)}
+        aria-label="Pick a project"
+        className="h-8 text-xs"
+      >
+        <option value="">— Unassign —</option>
+        {activeProjects.map((p) => (
+          <option key={p.id} value={String(p.id)}>
+            {p.code} · {p.name}
+          </option>
+        ))}
+      </Select>
+      <div className="flex gap-1.5">
+        <button
+          type="button"
+          onClick={save}
+          disabled={busy}
+          className="rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground transition hover:opacity-90 disabled:opacity-50"
+        >
+          {busy ? "Saving…" : "Save"}
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setEditing(false);
+            setErr(null);
+          }}
+          disabled={busy}
+          className="rounded-md border border-border bg-background px-2.5 py-1 text-xs font-medium transition hover:bg-accent disabled:opacity-50"
+        >
+          Cancel
+        </button>
+      </div>
+      {err && (
+        <p className="rounded-md border border-danger/40 bg-danger/10 px-2 py-1 text-xs text-danger">
           {err}
         </p>
       )}
