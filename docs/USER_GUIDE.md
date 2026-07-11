@@ -175,14 +175,16 @@ A guided 3-step flow to onboard someone from zero to a seat in under a minute. A
 
 **Step 1 — Add the joiner.** Either click **New employee** to open the create form, or, if the record already exists, just paste the employee's id or `emp_code` (like `E00042`). Either works.
 
-**Step 2 — Find a seat near their team.** Pick the department the joiner is joining, and optionally a project id/code (like `PRJ001`) if you know their assigned project. Click **Suggest seats**.
+**Step 2 — Find a seat near their team.** Pick the department the joiner is joining and the project they're being mapped to (id or code like `PRJ001`). Both fields drive seat suggestion (proximity to teammates on that project) **and** the project field carries into Step 4 so the joiner is assigned to that project in the same call — spec §3.2 wants every employee mapped to one active project. Click **Suggest seats**.
 
 The suggestion engine ranks vacant seats by:
 
 1. Zones where the joiner's teammates already sit (proximity to team).
 2. Fewest-remaining-vacancies-first — the algorithm packs scarce zones before scattering people into empty floors, so buildings fill up predictably instead of leaving half-empty pockets everywhere.
 
-**Step 3 — Pick one.** The suggestions come back as clickable seat cards showing code, building/floor/zone, and status. Click one to allocate; the flow completes and the seat's Selection panel now shows the new occupant.
+**Step 3 — Pick one.** The suggestions come back as clickable seat cards showing code, building/floor/zone, and status.
+
+**Step 4 — Allocate.** Confirm the employee id and click **Allocate**. Two things happen in the same DB transaction: the seat gets assigned to the joiner, and (if you filled the Project field in Step 2) the joiner is mapped to that project. If either fails the whole thing rolls back so you never end up with a half-onboarded row. If you skipped the project, a yellow warning appears — you can go back or proceed knowing the joiner will start unmapped.
 
 ---
 
@@ -266,9 +268,10 @@ Concrete recipes an evaluator can run through in a few minutes.
 1. Sign in as `admin` (or `hr`).
 2. Sidebar → **New Joiner**.
 3. Step 1: click **New employee**, fill in name/email/department/designation/joining date, save.
-4. Step 2: pick their department, optionally a project code, click **Suggest seats**.
+4. Step 2: pick their department **and their project** (id or code like `PRJ001`), click **Suggest seats**.
 5. Step 3: click one of the suggested seat cards.
-6. Verify: open **Seats**, navigate to that seat's building/floor, click the seat — the Selection panel now shows the new occupant.
+6. Step 4: confirm the employee id and click **Allocate + assign project**. Seat allocation and project mapping land in the same transaction.
+7. Verify: open **Seats**, navigate to that seat's building/floor, click the seat — the Selection panel now shows the new occupant *and* their project.
 
 ### B. Move someone to a different seat
 
