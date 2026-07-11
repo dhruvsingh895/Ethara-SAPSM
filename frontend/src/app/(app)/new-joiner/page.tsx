@@ -145,13 +145,27 @@ export default function NewJoinerPage() {
         setBusy(false);
         return;
       }
+      const body: Record<string, unknown> = {
+        employee_id: resolvedId,
+        seat_id: chosen.id,
+        note: "new joiner",
+      };
+      // Spec §3.2: map the joiner to the picked project in the same
+      // call so nobody ends up seated but unassigned.
+      if (projectId.trim()) {
+        const resolvedProj = await resolveProjectId(projectId.trim());
+        if (resolvedProj == null) {
+          setErr(
+            `No project matches "${projectId.trim()}". Enter a numeric id or a project code like PRJ001.`,
+          );
+          setBusy(false);
+          return;
+        }
+        body.project_id = resolvedProj;
+      }
       const alloc = await apiFetch<Allocation>("/api/v1/new-joiner/allocate", {
         method: "POST",
-        json: {
-          employee_id: resolvedId,
-          seat_id: chosen.id,
-          note: "new joiner",
-        },
+        json: body,
       });
       setResult(alloc);
     } catch (e) {
@@ -270,7 +284,7 @@ export default function NewJoinerPage() {
             </Select>
           </Field>
           <Field
-            label="Project (id or code, optional)"
+            label="Project to map (id or code)"
             htmlFor="nj-proj"
           >
             <Input
@@ -330,6 +344,14 @@ export default function NewJoinerPage() {
         <Card>
           <p className="label-cap">Step 4</p>
           <p className="mt-1 text-sm font-medium">Allocate</p>
+          {!projectId.trim() && (
+            <p className="mt-3 rounded-md border border-warning/40 bg-warning/10 p-2 text-xs text-warning">
+              No project picked in Step 2. The joiner will get a seat but
+              will remain unmapped to any project — spec §3.2 wants every
+              employee mapped to one. Go back and fill in the Project
+              field to have it assigned in the same call.
+            </p>
+          )}
           <div className="mt-4 flex flex-wrap items-end gap-3">
             <Field
               label="Employee (id or emp_code)"
@@ -350,6 +372,7 @@ export default function NewJoinerPage() {
               className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm transition hover:opacity-90 disabled:opacity-60"
             >
               Allocate {chosen.seat_code}
+              {projectId.trim() ? " + assign project" : ""}
             </button>
           </div>
         </Card>
@@ -368,6 +391,7 @@ export default function NewJoinerPage() {
             <div className="min-w-0">
               <p className="text-sm font-medium text-success">
                 Allocation #{result.id} created
+                {projectId.trim() ? " + project assigned" : ""}
               </p>
               <p className="mt-0.5 text-xs text-muted-foreground">
                 Seat {result.seat_id} → Employee{" "}
